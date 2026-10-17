@@ -1,0 +1,51 @@
+﻿# Android / Gradle
+.gradle/
+build/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Local machine
+local.properties
+
+# Generated APK / AAB
+*.apk
+*.aab
+*.apks
+
+# Build / release output
+app/release/
+**/release/
+
+# Signing files
+*.jks
+*.keystore
+
+# Firebase configuration
+google-services.json
+
+# Debug / UI dumps
+*_dump.xml
+uiautomator*.xml
+window*.xml
+reg_*.xml
+
+# Temporary debug screenshots
+after_tap.png
+current_screen.png
+now.png
+typed_screen.png
+closed_diag.png
+diag_screen.png
+reg_error.png
+
+# OS files
+.DS_Store
+Thumbs.db

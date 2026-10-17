@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Safe Alerts</string>
+    <string name="app_subtitle">SMS Emergency Alert System</string>
+    <string name="app_tagline">Emergency assistance, simplified.</string>
+    <string name="app_welcome_description">Quickly notify your trusted contacts when you need help.</string>
+    <string name="sos_label">SEND EMERGENCY ALERT</string>
+    <string name="sos_hold_instruction">Press &amp; hold for emergency alert</string>
+    <string name="sos_tap_instruction">Tap to start emergency countdown</string>
+</resources>

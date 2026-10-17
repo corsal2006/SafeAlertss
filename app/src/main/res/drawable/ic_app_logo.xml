@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Outer Protective Aura / Translucent Pulse Ring -->
+    <path
+        android:strokeColor="#FF2A55"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.35"
+        android:pathData="M60,8 C88.7,8 112,31.3 112,60 C112,88.7 88.7,112 60,112 C31.3,112 8,88.7 8,60 C8,31.3 31.3,8 60,8 Z" />
+
+    <!-- Main Safety Shield (Vibrant Emergency Crimson) -->
+    <path
+        android:fillColor="#E11D48"
+        android:pathData="M60,14 C76,17.5 88,20 95,25.5 C95,60 80.5,88 60,102 C39.5,88 25,60 25,25.5 C32,20 44,17.5 60,14 Z" />
+
+    <!-- Right Shield Depth Facet (Deep Crimson Velvet) -->
+    <path
+        android:fillColor="#BE123C"
+        android:pathData="M60,14 C76,17.5 88,20 95,25.5 C95,60 80.5,88 60,102 L60,14 Z" />
+
+    <!-- Translucent Glass Shield Highlight Accent -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.4"
+        android:pathData="M60,17 C73,20 84,22 90,27 C90,58 77,83 60,96 C43,83 30,58 30,27 C36,22 47,20 60,17 Z" />
+
+    <!-- Concentric Wireless Mesh Signal Arcs (Top Symbolizing Offline Mesh Networking) -->
+    <!-- Arc 1: Outer Wireless Signal -->
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:strokeAlpha="0.9"
+        android:pathData="M44,38 C49,33 71,33 76,38" />
+
+    <!-- Arc 2: Inner Wireless Signal -->
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"
+        android:pathData="M50,44 C53,41 67,41 70,44" />
+
+    <!-- Central Wireless / Active Beacon Node -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,49 A3,3 0 1,0 60,55 A3,3 0 1,0 60,49 Z" />
+
+    <!-- Emergency Telemetry Pulse / Lifeline Wave -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M33,72 L44,72 L49,58 L55,86 L62,60 L68,76 L72,72 L87,72" />
+
+    <!-- Pulse Wave Shadow / Glow -->
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="1.8"
+        android:strokeAlpha="0.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M33,72 L44,72 L49,58 L55,86 L62,60 L68,76 L72,72 L87,72" />
+</vector>

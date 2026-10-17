@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profile document: users/{userId}
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Trusted Contacts sub-collection: users/{userId}/trustedContacts/{contactId}
+      match /trustedContacts/{contactId} {
+        allow read, write, delete: if isOwner(userId);
+      }
+
+      // Backwards-compatible emergencyContacts sub-collection
+      match /emergencyContacts/{contactId} {
+        allow read, write, delete: if isOwner(userId);
+      }
+
+      // Alerts audit sub-collection: users/{userId}/alerts/{alertId}
+      match /alerts/{alertId} {
+        allow read, create, update, delete: if isOwner(userId);
+
+        // Live location stream sub-collection: users/{userId}/alerts/{alertId}/locations/{locationId}
+        match /locations/{locationId} {
+          allow read, create, update, delete: if isOwner(userId);
+        }
+      }
+
+      // Backwards-compatible emergencyAlerts sub-collection
+      match /emergencyAlerts/{alertId} {
+        allow read, create, update, delete: if isOwner(userId);
+
+        match /locations/{locationId} {
+          allow read, create, update, delete: if isOwner(userId);
+        }
+      }
+    }
+
+    // Mesh Gateway Relayed Emergencies:
+    // Any authenticated SafeAlerts peer acting as an opportunistic internet gateway can upload relayed offline SOS alerts.
+    // Immutable write-only ingestion: users cannot read or tamper with other users' relayed emergencies.
+    match /mesh_relayed_emergencies/{emergencyId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.emergencyId is string
+        && request.resource.data.messageText is string
+        && request.resource.data.timestamp is int;
+      allow update, delete, read: if false;
+    }
+
+    // Deny all other cross-user access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Monochrome Shield -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,26 C65,28 73,29 78,33 C78,54 68,72 54,81 C40,72 30,54 30,33 C35,29 43,28 54,26 Z" />
+
+    <!-- SMS Message Bubble cutout -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M42,39 C38.686,39 36,41.686 36,45 L36,59 C36,62.314 38.686,65 42,65 L46,65 L46,69.5 C46,70.2 46.8,70.6 47.3,70.1 L52.4,65 L66,65 C69.314,65 72,62.314 72,59 L72,45 C72,41.686 69.314,39 66,39 Z" />
+
+    <!-- Emergency Signal Wave -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M41,52 L47,52 L50,45 L54,59 L58,47 L61,54 L63,52 L67,52" />
+</vector>
