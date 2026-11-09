@@ -32,9 +32,12 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     object Settings : Screen("settings")
     object EmergencyTriggers : Screen("emergency_triggers")
+<<<<<<< HEAD
     object WalkieTalkie : Screen("walkie_talkie")
     object WomensSafety : Screen("womens_safety")
     object TrustedCircle : Screen("trusted_circle")
+=======
+>>>>>>> origin/main
     object About : Screen("about")
 
     object SosCountdown : Screen("sos_countdown/{type}?trigger={trigger}") {

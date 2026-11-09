@@ -47,10 +47,17 @@ val TextSecondary: Color
     @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 
 val TextMuted: Color
+<<<<<<< HEAD
     @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 
 val TextTertiary: Color
     @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+=======
+    @Composable get() = MaterialTheme.colorScheme.outline
+
+val TextTertiary: Color
+    @Composable get() = MaterialTheme.colorScheme.outline
+>>>>>>> origin/main
 
 val BackgroundDark: Color
     @Composable get() = MaterialTheme.colorScheme.background

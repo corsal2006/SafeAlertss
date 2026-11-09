@@ -1,5 +1,6 @@
 {
   "firestore": {
+<<<<<<< HEAD
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
@@ -14,5 +15,8 @@
       "enabled": false
     },
     "singleProjectMode": true
+=======
+    "rules": "firestore.rules"
+>>>>>>> origin/main
   }
 }

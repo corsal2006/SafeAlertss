@@ -5,7 +5,11 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+<<<<<<< HEAD
 import com.siddesh.smsalerts.utils.PrivacyLog as Log
+=======
+import android.util.Log
+>>>>>>> origin/main
 import kotlin.math.sqrt
 
 /**
@@ -35,6 +39,7 @@ class ShakeDetector(
     var isListening: Boolean = false
         private set
 
+<<<<<<< HEAD
     var requiredShakes: Int = 5
     var cooldownMs: Long = 30_000L
 
@@ -46,6 +51,16 @@ class ShakeDetector(
     }
 
     private val pattern = ShakePattern()
+=======
+    var requiredShakes: Int = 3
+    var cooldownMs: Long = 30_000L
+
+    fun configure(shakes: Int, cooldown: Long) {
+        this.requiredShakes = shakes
+        this.cooldownMs = cooldown
+    }
+
+>>>>>>> origin/main
     private var shakeCount = 0
     private var lastShakeTimestamp = 0L
     private var lastTriggerTimestamp = 0L
@@ -68,7 +83,10 @@ class ShakeDetector(
         sensorManager.unregisterListener(this)
         isListening = false
         shakeCount = 0
+<<<<<<< HEAD
         pattern.reset()
+=======
+>>>>>>> origin/main
         Log.d(TAG, "ShakeDetector stopped")
     }
 
@@ -94,7 +112,33 @@ class ShakeDetector(
         // Net g-force vector magnitude minus 1G of resting gravity
         val netGForce = sqrt((gX * gX + gY * gY + gZ * gZ).toDouble()).toFloat() - 1.0f
 
+<<<<<<< HEAD
         if (pattern.sample(netGForce, android.os.SystemClock.elapsedRealtime(), cooldownMs)) onShakeDetected()
+=======
+        if (netGForce >= SHAKE_THRESHOLD_G_FORCE) {
+            // Check debounce to avoid counting the return swing of the exact same shake
+            if (now - lastShakeTimestamp < SHAKE_DEBOUNCE_MS) {
+                return
+            }
+
+            // If time between shakes exceeded window, reset count to 1
+            if (now - lastShakeTimestamp > SHAKE_WINDOW_MS) {
+                shakeCount = 1
+            } else {
+                shakeCount++
+            }
+            lastShakeTimestamp = now
+
+            Log.d(TAG, "Shake registered: count=$shakeCount / $requiredShakes (gForce=$netGForce)")
+
+            if (shakeCount >= requiredShakes) {
+                shakeCount = 0
+                lastTriggerTimestamp = now
+                Log.i(TAG, "EMERGENCY SHAKE TRIGGER REACHED ($requiredShakes shakes)")
+                onShakeDetected()
+            }
+        }
+>>>>>>> origin/main
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {

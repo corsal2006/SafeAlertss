@@ -2,6 +2,7 @@ package com.siddesh.smsalerts.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+<<<<<<< HEAD
 import com.siddesh.smsalerts.SafeAlertApp
 import com.siddesh.smsalerts.data.model.EmergencyAlert
 import com.siddesh.smsalerts.data.model.EmergencyIncident
@@ -9,6 +10,12 @@ import com.siddesh.smsalerts.data.model.Resource
 import com.siddesh.smsalerts.data.repository.AlertsRepository
 import com.siddesh.smsalerts.data.repository.AuthRepository
 import com.siddesh.smsalerts.service.EmergencyOutbox
+=======
+import com.siddesh.smsalerts.data.model.EmergencyAlert
+import com.siddesh.smsalerts.data.model.Resource
+import com.siddesh.smsalerts.data.repository.AlertsRepository
+import com.siddesh.smsalerts.data.repository.AuthRepository
+>>>>>>> origin/main
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,8 +24,12 @@ import kotlinx.coroutines.launch
 
 class HistoryViewModel @JvmOverloads constructor(
     private val authRepository: AuthRepository = AuthRepository(),
+<<<<<<< HEAD
     private val alertsRepository: AlertsRepository = AlertsRepository(),
     private val context: android.content.Context? = null
+=======
+    private val alertsRepository: AlertsRepository = AlertsRepository()
+>>>>>>> origin/main
 ) : ViewModel() {
 
     private val _alerts = MutableStateFlow<List<EmergencyAlert>>(emptyList())
@@ -29,6 +40,7 @@ class HistoryViewModel @JvmOverloads constructor(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+<<<<<<< HEAD
     private val _status = MutableStateFlow("")
     val status = _status.asStateFlow()
     private var cloudAlerts: List<EmergencyAlert> = emptyList()
@@ -49,12 +61,26 @@ class HistoryViewModel @JvmOverloads constructor(
                     }
                 } else if (state is com.siddesh.smsalerts.data.repository.AuthState.SignedOut) {
                     _alerts.value = mergeAlerts(emptyList())
+=======
+
+    init {
+        viewModelScope.launch {
+            authRepository.authState.collectLatest { state ->
+                if (state is com.siddesh.smsalerts.data.repository.AuthState.SignedIn) {
+                    alertsRepository.getAlertsFlow(state.user.uid).collectLatest { list ->
+                        _alerts.value = list
+                        _isLoading.value = false
+                    }
+                } else if (state is com.siddesh.smsalerts.data.repository.AuthState.SignedOut) {
+                    _alerts.value = emptyList()
+>>>>>>> origin/main
                     _isLoading.value = false
                 }
             }
         }
     }
 
+<<<<<<< HEAD
     private fun loadLocalAlerts(): List<EmergencyAlert> {
         val ctx = context ?: SafeAlertApp.instance ?: return emptyList()
         return try {
@@ -107,6 +133,21 @@ class HistoryViewModel @JvmOverloads constructor(
             _selectedAlert.value = _alerts.value.find { it.alertId == alertId }
             return
         }
+=======
+    fun loadHistory() {
+        val userId = authRepository.currentUserId ?: return
+        viewModelScope.launch {
+            _isLoading.value = true
+            alertsRepository.getAlertsFlow(userId).collectLatest { list ->
+                _alerts.value = list
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun selectAlertById(alertId: String) {
+        val userId = authRepository.currentUserId ?: return
+>>>>>>> origin/main
         viewModelScope.launch {
             when (val result = alertsRepository.getAlertById(userId, alertId)) {
                 is Resource.Success -> _selectedAlert.value = result.data
@@ -116,6 +157,7 @@ class HistoryViewModel @JvmOverloads constructor(
             }
         }
     }
+<<<<<<< HEAD
 
     fun deleteAlert(alertId: String) {
         viewModelScope.launch { deleteConfirmed(alertId) }
@@ -154,4 +196,6 @@ class HistoryViewModel @JvmOverloads constructor(
             if (ids.isEmpty()) _status.value = "No ended incidents are shown for this account."
         }
     }
+=======
+>>>>>>> origin/main
 }

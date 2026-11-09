@@ -6,7 +6,10 @@ import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+<<<<<<< HEAD
 import androidx.compose.ui.draw.clip
+=======
+>>>>>>> origin/main
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +35,10 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+<<<<<<< HEAD
 import androidx.compose.material.icons.filled.Phone
+=======
+>>>>>>> origin/main
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Warning
@@ -92,7 +98,10 @@ fun SettingsScreen(
     onNavigateToEmergencyTriggers: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
+<<<<<<< HEAD
     onUserManual: () -> Unit = {},
+=======
+>>>>>>> origin/main
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -190,7 +199,11 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
+<<<<<<< HEAD
                         text = "SafeAlerts uses a foreground service while protection is enabled. Android may stop monitoring after a user-forced stop.",
+=======
+                        text = "Safe Alerts uses a foreground service while protection is enabled. Android may stop monitoring after a user-forced stop.",
+>>>>>>> origin/main
                         color = TextMuted,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
@@ -321,6 +334,7 @@ fun SettingsScreen(
                 }
             }
 
+<<<<<<< HEAD
             // 2b. Emergency Numbers & Helplines (112, 108, 101, 1091)
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -399,6 +413,8 @@ fun SettingsScreen(
                 }
             }
 
+=======
+>>>>>>> origin/main
             // 3. Trusted Contacts Shortcut
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -450,7 +466,11 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
+<<<<<<< HEAD
                                     text = "Includes your actual GPS fix in authorized emergency alerts",
+=======
+                                    text = "Includes live Google Maps coordinate link in SMS",
+>>>>>>> origin/main
                                     color = TextSecondary,
                                     fontSize = 12.sp
                                 )
@@ -530,7 +550,11 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
+<<<<<<< HEAD
                                 text = "Sends automatic emergency SMS alerts via cellular network to your trusted contacts using Android SmsManager.",
+=======
+                                text = "Sends SMS directly in background when permission is granted",
+>>>>>>> origin/main
                                 color = TextSecondary,
                                 fontSize = 12.sp
                             )
@@ -538,7 +562,10 @@ fun SettingsScreen(
 
                         Switch(
                             checked = preferences.directSmsEnabled,
+<<<<<<< HEAD
                             enabled = true,
+=======
+>>>>>>> origin/main
                             onCheckedChange = { enabled ->
                                 scope.launch { preferencesDataStore.updateDirectSms(enabled) }
                             },
@@ -664,8 +691,13 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     SettingsPermissionRow(
+<<<<<<< HEAD
                         title = "Automatic carrier SMS (SEND_SMS)",
                         description = "Required for sending direct emergency alerts via cellular carrier",
+=======
+                        title = "SMS Dispatch Permission (SEND_SMS)",
+                        description = "Direct cellular transmission of alerts",
+>>>>>>> origin/main
                         isGranted = hasSmsPermission
                     )
 
@@ -681,7 +713,10 @@ fun SettingsScreen(
                 }
             }
 
+<<<<<<< HEAD
             OutlinedButton(onClick = onUserManual, modifier = Modifier.fillMaxWidth()) { Text("User Manual") }
+=======
+>>>>>>> origin/main
             // 7. Privacy & About Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -721,7 +756,11 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
+<<<<<<< HEAD
                 Text("SIGN OUT OF SafeAlerts", fontWeight = FontWeight.Bold)
+=======
+                Text("SIGN OUT OF SAFEALERT", fontWeight = FontWeight.Bold)
+>>>>>>> origin/main
             }
 
             Spacer(modifier = Modifier.height(88.dp))
@@ -786,6 +825,7 @@ fun SettingsScreen(
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Text(
+<<<<<<< HEAD
                         text = "Choose which safety features and permissions to enable. SafeAlerts does not include advertising SDKs.\n\n" +
                                 "Emergency SMS: With SMS permission, alerts use your SIM to contact the emergency contacts you saved. Alerts may be triggered by SOS or by a shake, voice phrase or expired safety timer you enabled. Messages can include your emergency profile and location when enabled. Carrier charges may apply. SafeAlerts does not read your SMS inbox or call history.\n\n" +
                                 "Live location: An active SOS, journey or Trusted Circle sharing session can keep collecting and sharing location while the app is in the background, with a visible service notification. Updates target 15 seconds; Android may delay them. Cloud location is available to accepted members with an active sharing grant. Stop the session or turn off sharing to end updates.\n\n" +
@@ -793,6 +833,13 @@ fun SettingsScreen(
                                 "Microphone: Voice recognition listens on Home or during a speech test after you enable it and grant permission. On-device recognition is preferred; when unavailable, your phone's speech provider may send audio to its servers. SafeAlerts does not save raw microphone recordings.\n\n" +
                                 "Maps and Bluetooth: Map images are requested from OpenStreetMap, which receives your network address and requested map area. Nearby sharing uses Bluetooth with your permission and a private group key.\n\n" +
                                 "Your controls: Revoke permissions in Android settings, disable triggers, stop sharing, remove saved contacts, or confirm deletion of your resolved/cancelled incidents in History. Copies already delivered by SMS or to another device cannot be recalled.",
+=======
+                        text = "SafeAlert is designed with strict security and privacy standards:\n\n" +
+                                "1. Zero Third-Party Advertising: No advertising SDKs, tracking pixels, or monetized telemetry.\n\n" +
+                                "2. Strict Firestore Isolation: All data is partitioned under your authenticated Firebase UID (users/{uid}/). Security rules enforce that only you can read or write your contacts and history.\n\n" +
+                                "3. GPS Coordinates: Your location is queried ONLY when you deliberate trigger an emergency alert or request a safety check-in. It is never tracked continuously in the background.\n\n" +
+                                "4. Direct Carrier SMS: SMS dispatches go directly through your cellular carrier via Android telephony APIs without routing through intermediary servers.",
+>>>>>>> origin/main
                         fontSize = 13.sp,
                         color = TextSecondary,
                         lineHeight = 18.sp

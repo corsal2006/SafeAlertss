@@ -12,6 +12,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 /**
+<<<<<<< HEAD
  * Feature-level descriptor for centralized permission handling.
  */
 enum class AppPermissionFeature(
@@ -57,6 +58,8 @@ enum class AppPermissionFeature(
 }
 
 /**
+=======
+>>>>>>> origin/main
  * Centralized Permission Manager.
  * Checks, verifies, and manages runtime permissions contextually.
  */
@@ -78,6 +81,7 @@ object PermissionManager {
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
+<<<<<<< HEAD
     fun hasBluetoothPermissions(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             hasPermission(context, Manifest.permission.BLUETOOTH_SCAN) &&
@@ -106,6 +110,8 @@ object PermissionManager {
         }
     }
 
+=======
+>>>>>>> origin/main
     fun hasContactsPermission(context: Context): Boolean =
         hasPermission(context, PERMISSION_READ_CONTACTS)
 
@@ -115,6 +121,7 @@ object PermissionManager {
     fun hasLocationPermission(context: Context): Boolean =
         hasPermission(context, PERMISSION_FINE_LOCATION) || hasPermission(context, PERMISSION_COARSE_LOCATION)
 
+<<<<<<< HEAD
     fun hasFineLocationPermission(context: Context): Boolean =
         hasPermission(context, PERMISSION_FINE_LOCATION)
 
@@ -126,6 +133,8 @@ object PermissionManager {
         }
     }
 
+=======
+>>>>>>> origin/main
     fun hasRecordAudioPermission(context: Context): Boolean =
         hasPermission(context, PERMISSION_RECORD_AUDIO)
 
@@ -137,6 +146,7 @@ object PermissionManager {
         }
     }
 
+<<<<<<< HEAD
     fun isFeatureGranted(context: Context, feature: AppPermissionFeature): Boolean {
         return when (feature) {
             AppPermissionFeature.LOCATION -> hasLocationPermission(context)
@@ -165,11 +175,14 @@ object PermissionManager {
         }
     }
 
+=======
+>>>>>>> origin/main
     fun shouldShowRationale(activity: Activity, permission: String): Boolean {
         if (permission.isBlank()) return false
         return ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
     }
 
+<<<<<<< HEAD
     fun isPermanentlyDenied(activity: Activity, permissions: List<String>, hasAttempted: Boolean): Boolean {
         if (!hasAttempted) return false
         return permissions.any { perm ->
@@ -182,6 +195,13 @@ object PermissionManager {
             PERMISSION_SEND_SMS,
             PERMISSION_FINE_LOCATION,
             PERMISSION_COARSE_LOCATION,
+=======
+    fun getAllRequiredPermissions(): List<String> {
+        val permissions = mutableListOf(
+            PERMISSION_FINE_LOCATION,
+            PERMISSION_COARSE_LOCATION,
+            PERMISSION_SEND_SMS,
+>>>>>>> origin/main
             PERMISSION_READ_CONTACTS,
             PERMISSION_RECORD_AUDIO
         )
@@ -219,6 +239,7 @@ object PermissionManager {
     fun getPermissionDescriptors(context: Context): List<AppPermissionInfo> {
         val list = mutableListOf(
             AppPermissionInfo(
+<<<<<<< HEAD
                 permission = PERMISSION_SEND_SMS,
                 title = "Emergency SMS (SEND_SMS)",
                 description = "Sends emergency SMS from your SIM to your saved contacts for SOS or the automatic triggers you enable. Carrier charges may apply. Does not read your SMS inbox.",
@@ -230,6 +251,19 @@ object PermissionManager {
                 title = "GPS Location (Precise & Coarse)",
                 description = "Adds your location to emergency alerts and updates authorized recipients during an active sharing session, including in the background with a visible notification.",
                 isGranted = hasLocationPermission(context),
+=======
+                permission = PERMISSION_FINE_LOCATION,
+                title = "GPS Location (Precise & Coarse)",
+                description = "Acquires real-time coordinates and generates a Google Maps link in your emergency alert SMS.",
+                isGranted = hasLocationPermission(context),
+                isEssential = true
+            ),
+            AppPermissionInfo(
+                permission = PERMISSION_SEND_SMS,
+                title = "Direct Emergency SMS",
+                description = "Automatically sends emergency alerts directly via cellular network without requiring Internet.",
+                isGranted = hasSmsPermission(context),
+>>>>>>> origin/main
                 isEssential = true
             ),
             AppPermissionInfo(
@@ -257,7 +291,11 @@ object PermissionManager {
             AppPermissionInfo(
                 permission = PERMISSION_RECORD_AUDIO,
                 title = "Microphone (Voice Emergency)",
+<<<<<<< HEAD
                 description = "Listens for emergency phrases on Home or during a speech test. On-device recognition is preferred; your phone's speech provider may process audio online if it is unavailable.",
+=======
+                description = "Enables hands-free emergency dispatch when you say 'HELP'. Audio is processed only on-device.",
+>>>>>>> origin/main
                 isGranted = hasRecordAudioPermission(context),
                 isEssential = false
             )

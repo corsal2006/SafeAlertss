@@ -29,7 +29,10 @@ import com.siddesh.smsalerts.ui.navigation.SafeAlertNavGraph
 import com.siddesh.smsalerts.ui.theme.SafeAlertTheme
 import com.siddesh.smsalerts.ui.viewmodel.*
 import kotlinx.coroutines.launch
+<<<<<<< HEAD
 import kotlinx.coroutines.flow.first
+=======
+>>>>>>> origin/main
 
 @Suppress("DEPRECATION")
 class MainActivity : ComponentActivity() {
@@ -38,8 +41,11 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "SafeAlerts/GoogleAuth"
     }
 
+<<<<<<< HEAD
     private val openNearby = androidx.compose.runtime.mutableStateOf(false)
     private val notificationIncident = androidx.compose.runtime.mutableStateOf<String?>(null)
+=======
+>>>>>>> origin/main
     private val viewModelFactory by lazy {
         AppViewModelFactory(application)
     }
@@ -58,17 +64,29 @@ class MainActivity : ComponentActivity() {
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+<<<<<<< HEAD
         com.siddesh.smsalerts.utils.PrivacyLog.d(TAG, "GOOGLE_ACTIVITY_RESULT: resultCode = ${result.resultCode}, hasData = ${result.data != null}")
+=======
+        android.util.Log.d(TAG, "GOOGLE_ACTIVITY_RESULT: resultCode = ${result.resultCode}, hasData = ${result.data != null}")
+>>>>>>> origin/main
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
             val idToken = account?.idToken
+<<<<<<< HEAD
             com.siddesh.smsalerts.utils.PrivacyLog.d(TAG, "GOOGLE_CREDENTIAL_RECEIVED: idToken present = ${!idToken.isNullOrBlank()}")
+=======
+            android.util.Log.d(TAG, "GOOGLE_CREDENTIAL_RECEIVED: idToken present = ${!idToken.isNullOrBlank()}")
+>>>>>>> origin/main
             if (!idToken.isNullOrBlank()) {
                 authViewModel.signInWithGoogle(idToken)
             } else {
                 val message = "No Google credential available"
+<<<<<<< HEAD
                 com.siddesh.smsalerts.utils.PrivacyLog.e(TAG, "GOOGLE_CREDENTIAL_EMPTY: idToken is null or blank")
+=======
+                android.util.Log.e(TAG, "GOOGLE_CREDENTIAL_EMPTY: idToken is null or blank")
+>>>>>>> origin/main
                 authViewModel.setError(message)
                 Toast.makeText(this, message, Toast.LENGTH_LONG).show()
             }
@@ -76,10 +94,17 @@ class MainActivity : ComponentActivity() {
             handleGoogleApiException(e)
         } catch (e: Exception) {
             if (result.resultCode == RESULT_CANCELED) {
+<<<<<<< HEAD
                 com.siddesh.smsalerts.utils.PrivacyLog.d(TAG, "GOOGLE_PICKER_CANCELLED: user closed or backed out of picker")
                 authViewModel.setError("Google Sign-In cancelled")
             } else {
                 com.siddesh.smsalerts.utils.PrivacyLog.e(TAG, "GOOGLE_SIGN_IN_EXCEPTION: class=${e.javaClass.simpleName}, message=${e.message}", e)
+=======
+                android.util.Log.d(TAG, "GOOGLE_PICKER_CANCELLED: user closed or backed out of picker")
+                authViewModel.setError("Google Sign-In cancelled")
+            } else {
+                android.util.Log.e(TAG, "GOOGLE_SIGN_IN_EXCEPTION: class=${e.javaClass.simpleName}, message=${e.message}", e)
+>>>>>>> origin/main
                 authViewModel.setError("Google Sign-In failed: ${e.localizedMessage ?: "Unknown error"}")
             }
         }
@@ -98,7 +123,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val webClientId = getWebClientId()
+<<<<<<< HEAD
         com.siddesh.smsalerts.utils.PrivacyLog.d(TAG, "CONFIGURED_WEB_CLIENT_ID: $webClientId")
+=======
+        android.util.Log.d(TAG, "CONFIGURED_WEB_CLIENT_ID: $webClientId")
+>>>>>>> origin/main
 
         // Initialize AndroidX Credential Manager
         credentialManager = CredentialManager.create(this)
@@ -130,9 +159,12 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
 
                 SafeAlertNavGraph(
+<<<<<<< HEAD
                     notificationIncidentId = notificationIncident.value,
                     openNearby = openNearby.value,
                     onNotificationOpened = { openNearby.value = false },
+=======
+>>>>>>> origin/main
                     navController = navController,
                     authViewModel = authViewModel,
                     homeViewModel = homeViewModel,
@@ -148,6 +180,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+<<<<<<< HEAD
     override fun onStart() {
         super.onStart(); SafeAlertApp.isVisible = true
         lifecycleScope.launch {
@@ -162,6 +195,8 @@ class MainActivity : ComponentActivity() {
     }
     override fun onStop() { SafeAlertApp.isVisible = false; super.onStop() }
 
+=======
+>>>>>>> origin/main
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIncomingIntent(intent)
@@ -169,7 +204,11 @@ class MainActivity : ComponentActivity() {
 
     private fun launchGoogleSignIn() {
         val webClientId = getWebClientId()
+<<<<<<< HEAD
         com.siddesh.smsalerts.utils.PrivacyLog.d(TAG, "INITIATING_GOOGLE_SIGN_IN via Credential Manager with client: $webClientId")
+=======
+        android.util.Log.d(TAG, "INITIATING_GOOGLE_SIGN_IN via Credential Manager with client: $webClientId")
+>>>>>>> origin/main
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(false)
             .setServerClientId(webClientId)
@@ -191,14 +230,22 @@ class MainActivity : ComponentActivity() {
                     try {
                         val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                         val idToken = googleIdTokenCredential.idToken
+<<<<<<< HEAD
                         com.siddesh.smsalerts.utils.PrivacyLog.d(TAG, "CREDENTIAL_MANAGER_SUCCESS: idToken acquired")
+=======
+                        android.util.Log.d(TAG, "CREDENTIAL_MANAGER_SUCCESS: idToken acquired")
+>>>>>>> origin/main
                         authViewModel.updateGoogleCredentialDiagnostic(
                             category = "SUCCESS",
                             result = "CREDENTIAL_MANAGER_TOKEN_ACQUIRED"
                         )
                         authViewModel.signInWithGoogle(idToken)
                     } catch (e: GoogleIdTokenParsingException) {
+<<<<<<< HEAD
                         com.siddesh.smsalerts.utils.PrivacyLog.e("GoogleSignIn", "Google Sign-In failed [GoogleIdTokenParsingException]: class=${e.javaClass.name}, message=${e.message}, cause=${e.cause}", e)
+=======
+                        android.util.Log.e("GoogleSignIn", "Google Sign-In failed [GoogleIdTokenParsingException]: class=${e.javaClass.name}, message=${e.message}, cause=${e.cause}", e)
+>>>>>>> origin/main
                         authViewModel.updateGoogleCredentialDiagnostic(
                             category = "INVALID_CREDENTIAL",
                             result = "PARSING_EXCEPTION",
@@ -207,11 +254,19 @@ class MainActivity : ComponentActivity() {
                         authViewModel.setError("Invalid Google credential received: ${e.message}")
                     }
                 } else {
+<<<<<<< HEAD
                     com.siddesh.smsalerts.utils.PrivacyLog.w("GoogleSignIn", "Google Sign-In [Unexpected Credential Type]: ${credential.type}")
                     launchLegacyGoogleSignIn()
                 }
             } catch (e: GetCredentialCancellationException) {
                 com.siddesh.smsalerts.utils.PrivacyLog.d("GoogleSignIn", "Google Sign-In cancelled by user")
+=======
+                    android.util.Log.w("GoogleSignIn", "Google Sign-In [Unexpected Credential Type]: ${credential.type}")
+                    launchLegacyGoogleSignIn()
+                }
+            } catch (e: GetCredentialCancellationException) {
+                android.util.Log.d("GoogleSignIn", "Google Sign-In cancelled by user")
+>>>>>>> origin/main
                 authViewModel.updateGoogleCredentialDiagnostic(
                     category = "USER_CANCELLED",
                     result = "CANCELLED",
@@ -219,7 +274,11 @@ class MainActivity : ComponentActivity() {
                 )
                 authViewModel.setError("Google Sign-In cancelled")
             } catch (e: NoCredentialException) {
+<<<<<<< HEAD
                 com.siddesh.smsalerts.utils.PrivacyLog.w("GoogleSignIn", "Google Sign-In [NoCredentialException]: class=${e.javaClass.name}, message=${e.message}. Falling back to legacy Google Sign-In", e)
+=======
+                android.util.Log.w("GoogleSignIn", "Google Sign-In [NoCredentialException]: class=${e.javaClass.name}, message=${e.message}. Falling back to legacy Google Sign-In", e)
+>>>>>>> origin/main
                 authViewModel.updateGoogleCredentialDiagnostic(
                     category = "NO_CREDENTIAL",
                     result = "FALLBACK_TO_LEGACY",
@@ -227,7 +286,11 @@ class MainActivity : ComponentActivity() {
                 )
                 launchLegacyGoogleSignIn()
             } catch (e: GetCredentialException) {
+<<<<<<< HEAD
                 com.siddesh.smsalerts.utils.PrivacyLog.e("GoogleSignIn", "Google Sign-In failed [GetCredentialException]: class=${e.javaClass.name}, type=${e.type}, message=${e.message}, cause=${e.cause}", e)
+=======
+                android.util.Log.e("GoogleSignIn", "Google Sign-In failed [GetCredentialException]: class=${e.javaClass.name}, type=${e.type}, message=${e.message}, cause=${e.cause}", e)
+>>>>>>> origin/main
                 val msg = e.message ?: ""
                 val type = e.type
                 if (msg.contains("10") || msg.contains("Developer", ignoreCase = true) || msg.contains("configuration", ignoreCase = true) || type.contains("configuration", ignoreCase = true)) {
@@ -243,14 +306,22 @@ class MainActivity : ComponentActivity() {
                     launchLegacyGoogleSignIn()
                 }
             } catch (e: Exception) {
+<<<<<<< HEAD
                 com.siddesh.smsalerts.utils.PrivacyLog.e("GoogleSignIn", "Google Sign-In failed [Unexpected Exception]: class=${e.javaClass.name}, message=${e.message}, cause=${e.cause}", e)
+=======
+                android.util.Log.e("GoogleSignIn", "Google Sign-In failed [Unexpected Exception]: class=${e.javaClass.name}, message=${e.message}, cause=${e.cause}", e)
+>>>>>>> origin/main
                 launchLegacyGoogleSignIn()
             }
         }
     }
 
     private fun launchLegacyGoogleSignIn() {
+<<<<<<< HEAD
         com.siddesh.smsalerts.utils.PrivacyLog.d("GoogleSignIn", "LAUNCHING_LEGACY_GOOGLE_SIGN_IN")
+=======
+        android.util.Log.d("GoogleSignIn", "LAUNCHING_LEGACY_GOOGLE_SIGN_IN")
+>>>>>>> origin/main
         googleSignInClient.signOut().addOnCompleteListener {
             val signInIntent = googleSignInClient.signInIntent
             googleSignInLauncher.launch(signInIntent)
@@ -260,6 +331,7 @@ class MainActivity : ComponentActivity() {
     private fun handleGoogleApiException(e: ApiException) {
         val statusCode = e.statusCode
         val exceptionClass = e.javaClass.name
+<<<<<<< HEAD
         com.siddesh.smsalerts.utils.PrivacyLog.e("GoogleSignIn", "Google Sign-In failed [ApiException]: class=$exceptionClass, statusCode=$statusCode, message=${e.message}, cause=${e.cause}", e)
         val (category, message) = when (statusCode) {
             12501, 16 -> {
@@ -284,6 +356,32 @@ class MainActivity : ComponentActivity() {
             }
             else -> {
                 com.siddesh.smsalerts.utils.PrivacyLog.e("GoogleSignIn", "Google Sign-In API error: statusCode=$statusCode")
+=======
+        android.util.Log.e("GoogleSignIn", "Google Sign-In failed [ApiException]: class=$exceptionClass, statusCode=$statusCode, message=${e.message}, cause=${e.cause}", e)
+        val (category, message) = when (statusCode) {
+            12501, 16 -> {
+                android.util.Log.d("GoogleSignIn", "Google Sign-In cancelled by user: statusCode=$statusCode")
+                "USER_CANCELLED" to "Google Sign-In cancelled"
+            }
+            10 -> {
+                android.util.Log.e("GoogleSignIn", "Developer Configuration Error (Code 10): Release SHA-1/SHA-256 is missing in Firebase Console for com.siddesh.smsalerts")
+                "DEVELOPER_ERROR" to "Developer Error (Code 10): Release SHA-1/SHA-256 must be registered in Firebase Console."
+            }
+            12500 -> {
+                android.util.Log.e("GoogleSignIn", "Configuration Error (Code 12500): Check Firebase Google Auth provider")
+                "CONFIG_ERROR" to "Configuration Error (Code 12500): Check Google Auth Provider in Firebase Console."
+            }
+            7 -> {
+                android.util.Log.e("GoogleSignIn", "Network Error (Code 7): No internet connection")
+                "NETWORK_ERROR" to "Network error: Please check your internet connection."
+            }
+            8 -> {
+                android.util.Log.e("GoogleSignIn", "Internal Error (Code 8): Google Play Services internal error")
+                "INTERNAL_ERROR" to "Google Play Services internal error (Code 8). Please retry."
+            }
+            else -> {
+                android.util.Log.e("GoogleSignIn", "Google Sign-In API error: statusCode=$statusCode")
+>>>>>>> origin/main
                 "API_ERROR" to "Google Sign-In API error (Code: $statusCode): ${e.localizedMessage ?: "Unknown error"}"
             }
         }
@@ -298,8 +396,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingIntent(intent: Intent) {
+<<<<<<< HEAD
         openNearby.value = intent.getBooleanExtra("openNearby", false)
         intent.getStringExtra("incidentId")?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{1,100}")) }?.let { notificationIncident.value = it }
+=======
+>>>>>>> origin/main
         val emailLink = intent.data?.toString()
         if (emailLink != null && authViewModel.isSignInWithEmailLink(emailLink)) {
             authViewModel.completeSignInWithEmailLink(emailLink)

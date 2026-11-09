@@ -113,7 +113,11 @@ Please contact me immediately.
             getTemplateForType(type)
         }
 
+<<<<<<< HEAD
         val name = userName.ifBlank { "SafeAlerts User" }
+=======
+        val name = userName.ifBlank { "SafeAlert User" }
+>>>>>>> origin/main
         val locationText = if (!mapsUrl.isNullOrBlank()) {
             mapsUrl
         } else {

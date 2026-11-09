@@ -14,14 +14,20 @@ import com.siddesh.smsalerts.service.EmergencyManager
 import kotlinx.coroutines.flow.StateFlow
 
 sealed class SosStage {
+<<<<<<< HEAD
     object Idle : SosStage()
     data class TriggerDetected(val source: String, val emergencyType: String) : SosStage()
+=======
+>>>>>>> origin/main
     data class Countdown(val secondsLeft: Int) : SosStage()
     object AcquiringLocation : SosStage()
     object TransmittingSms : SosStage()
     object SavingCloudAudit : SosStage()
+<<<<<<< HEAD
     object Dispatching : SosStage()
     object EmergencyActive : SosStage()
+=======
+>>>>>>> origin/main
     data class Completed(
         val alert: EmergencyAlert,
         val smsResult: SmsDispatchResult
@@ -32,7 +38,10 @@ sealed class SosStage {
         val fallbackIntent: Intent? = null
     ) : SosStage()
     object Cancelled : SosStage()
+<<<<<<< HEAD
     object Resolved : SosStage()
+=======
+>>>>>>> origin/main
 }
 
 class SosViewModel @JvmOverloads constructor(
@@ -46,14 +55,21 @@ class SosViewModel @JvmOverloads constructor(
 ) : AndroidViewModel(application) {
 
     val stage: StateFlow<SosStage> = emergencyManager.stage
+<<<<<<< HEAD
     val incidentId: String? get() = emergencyManager.currentIncidentId
     fun resumeIncident(id: String) = emergencyManager.resumeIncident(id)
+=======
+>>>>>>> origin/main
 
     fun startCountdown(
         emergencyType: String,
         customMessage: String = "",
         triggerSource: String = "BUTTON",
+<<<<<<< HEAD
         durationSeconds: Int? = null
+=======
+        durationSeconds: Int = 5
+>>>>>>> origin/main
     ) {
         emergencyManager.startCountdown(
             triggerSource = triggerSource,

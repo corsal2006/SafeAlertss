@@ -28,7 +28,11 @@ fun AboutScreen(
     Scaffold(
         topBar = {
             SafeAlertTopBar(
+<<<<<<< HEAD
                 title = "About SafeAlerts",
+=======
+                title = "About SafeAlert",
+>>>>>>> origin/main
                 showBackButton = true,
                 onBackClick = onBackClick
             )
@@ -62,7 +66,11 @@ fun AboutScreen(
             }
 
             Text(
+<<<<<<< HEAD
                 text = "SafeAlerts",
+=======
+                text = "SafeAlert SOS",
+>>>>>>> origin/main
                 color = TextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
@@ -92,7 +100,11 @@ fun AboutScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
+<<<<<<< HEAD
                         text = "SafeAlerts coordinates local safety timers, consent-based secure cloud sync and encrypted nearby Bluetooth alerts with zero paid dependencies. Delivery depends on connectivity, carrier SMS permissions, and device conditions.",
+=======
+                        text = "SafeAlert is designed to address emergency response latency in scenarios with zero or low data connectivity. By leveraging GSM cellular short message service (SMS) and device GPS telemetry, vital distress signals and real-time coordinates are transmitted directly without relying on data availability.",
+>>>>>>> origin/main
                         color = TextSecondary,
                         fontSize = 13.sp,
                         lineHeight = 18.sp
@@ -111,7 +123,11 @@ fun AboutScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
+<<<<<<< HEAD
                     TechItem(title = "Telephony Subsystem", desc = "Native Android SmsManager with multipart dispatch, carrier delivery tracking, and dialer fallback")
+=======
+                    TechItem(title = "Telephony Subsystem", desc = "Android SmsManager with multi-part PDU splitting & SIM state verification")
+>>>>>>> origin/main
                     TechItem(title = "Geolocation Engine", desc = "Google Play FusedLocationProviderClient with PRIORITY_HIGH_ACCURACY GPS fixes")
                     TechItem(title = "Cloud Infrastructure", desc = "Firebase Authentication (Email, Passwordless Link, Google) & Cloud Firestore persistence")
                     TechItem(title = "User Interface", desc = "100% Jetpack Compose with Material 3, Dark Modern glassmorphism & coroutine flows")
@@ -137,7 +153,11 @@ fun AboutScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
+<<<<<<< HEAD
                             text = "Automatic SMS is disabled in this ₹0 build. Calls and messages you send through other apps may incur carrier charges. SafeAlerts cannot guarantee emergency delivery.",
+=======
+                            text = "Standard cellular SMS carrier charges may apply depending on your plan. Ensure active SIM card and network coverage. In severe life-threatening emergencies, also dial local emergency dispatch services (such as 112 or 911).",
+>>>>>>> origin/main
                             color = TextSecondary,
                             fontSize = 12.sp,
                             lineHeight = 16.sp

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Android / Gradle
+=======
+﻿# Android / Gradle
+>>>>>>> origin/main
 .gradle/
 build/
 **/build/
@@ -14,8 +18,11 @@ captures/
 
 # Local machine
 local.properties
+<<<<<<< HEAD
 secrets.properties
 signing.properties
+=======
+>>>>>>> origin/main
 
 # Generated APK / AAB
 *.apk
@@ -51,9 +58,12 @@ reg_error.png
 # OS files
 .DS_Store
 Thumbs.db
+<<<<<<< HEAD
 
 functions/node_modules/
 *-debug.log
 
 # Deliberately synthetic configuration for the isolated local QA package
 !app/src/qa/google-services.json
+=======
+>>>>>>> origin/main

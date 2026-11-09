@@ -1,9 +1,13 @@
 package com.siddesh.smsalerts.ui.screens.auth
 
+<<<<<<< HEAD
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.ui.res.painterResource
 import com.siddesh.smsalerts.R
+=======
+import androidx.compose.foundation.background
+>>>>>>> origin/main
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -146,7 +150,11 @@ fun LoginScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Security,
+<<<<<<< HEAD
                     contentDescription = "SafeAlerts Logo",
+=======
+                    contentDescription = "SafeAlert Logo",
+>>>>>>> origin/main
                     tint = EmergencyRed,
                     modifier = Modifier.size(40.dp)
                 )
@@ -155,7 +163,11 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
+<<<<<<< HEAD
                 text = "SafeAlerts",
+=======
+                text = "SafeAlert",
+>>>>>>> origin/main
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -320,7 +332,11 @@ fun LoginScreen(
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable(onClick = onNavigateToForgotPassword)
+<<<<<<< HEAD
                         .padding(horizontal = 8.dp, vertical = 10.dp)
+=======
+                        .padding(vertical = 4.dp)
+>>>>>>> origin/main
                 )
             }
 
@@ -379,11 +395,15 @@ fun LoginScreen(
                     Text((uiState as AuthUiState.Loading).message, color = TextPrimary, fontSize = 14.sp)
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+<<<<<<< HEAD
                         Image(
                             painter = painterResource(id = R.drawable.ic_google_logo),
                             contentDescription = "Google Logo",
                             modifier = Modifier.size(20.dp)
                         )
+=======
+                        Text("G", fontSize = 18.sp, fontWeight = FontWeight.Black, color = EmergencyRed)
+>>>>>>> origin/main
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "Continue with Google",
@@ -437,9 +457,13 @@ fun LoginScreen(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = EmergencyRed,
+<<<<<<< HEAD
                     modifier = Modifier
                         .clickable(onClick = onNavigateToRegister)
                         .padding(horizontal = 8.dp, vertical = 10.dp)
+=======
+                    modifier = Modifier.clickable(onClick = onNavigateToRegister)
+>>>>>>> origin/main
                 )
             }
         }

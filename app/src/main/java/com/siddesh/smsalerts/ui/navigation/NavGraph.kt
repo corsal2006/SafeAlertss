@@ -6,9 +6,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+<<<<<<< HEAD
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+=======
+>>>>>>> origin/main
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -35,8 +38,11 @@ import com.siddesh.smsalerts.ui.viewmodel.*
 
 @Composable
 fun SafeAlertNavGraph(
+<<<<<<< HEAD
     openNearby: Boolean = false,
     onNotificationOpened: () -> Unit = {},
+=======
+>>>>>>> origin/main
     navController: NavHostController,
     authViewModel: AuthViewModel,
     homeViewModel: HomeViewModel,
@@ -45,14 +51,21 @@ fun SafeAlertNavGraph(
     historyViewModel: HistoryViewModel,
     profileViewModel: ProfileViewModel,
     onGoogleSignInClick: () -> Unit,
+<<<<<<< HEAD
     modifier: Modifier = Modifier,
     notificationIncidentId: String? = null
+=======
+    modifier: Modifier = Modifier
+>>>>>>> origin/main
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val authState by authViewModel.authState.collectAsState()
+<<<<<<< HEAD
     val emergencyStage by sosViewModel.stage.collectAsState()
     val profile by profileViewModel.userProfile.collectAsState()
+=======
+>>>>>>> origin/main
 
     androidx.compose.runtime.LaunchedEffect(authState) {
         when (authState) {
@@ -66,7 +79,10 @@ fun SafeAlertNavGraph(
                     contactsViewModel.loadContacts()
                     historyViewModel.loadHistory()
                     profileViewModel.loadProfile()
+<<<<<<< HEAD
                     com.siddesh.smsalerts.service.EmergencyMessagingService.registerCurrentDevice()
+=======
+>>>>>>> origin/main
 
                     navController.navigate(Screen.Home.route) {
                         popUpTo(0) { inclusive = false }
@@ -85,7 +101,10 @@ fun SafeAlertNavGraph(
                 ) {
                     navController.navigate(Screen.Welcome.route) {
                         popUpTo(0) { inclusive = true }
+<<<<<<< HEAD
                         launchSingleTop = true
+=======
+>>>>>>> origin/main
                     }
                 }
             }
@@ -93,6 +112,7 @@ fun SafeAlertNavGraph(
         }
     }
 
+<<<<<<< HEAD
     val safePopBack: () -> Unit = {
         if (!navController.popBackStack()) {
             navController.navigate(Screen.Home.route) {
@@ -105,12 +125,15 @@ fun SafeAlertNavGraph(
     androidx.compose.runtime.LaunchedEffect(notificationIncidentId, authState) {
         if (notificationIncidentId != null && authState is com.siddesh.smsalerts.data.repository.AuthState.SignedIn) navController.navigate("incident/$notificationIncidentId") { launchSingleTop = true }
     }
+=======
+>>>>>>> origin/main
     val bottomBarRoutes = listOf(
         Screen.Home.route,
         Screen.Contacts.route,
         Screen.History.route,
         Screen.Settings.route
     )
+<<<<<<< HEAD
     if (emergencyStage is SosStage.Countdown && currentRoute != Screen.SosCountdown.route &&
         authState is com.siddesh.smsalerts.data.repository.AuthState.SignedIn) {
         androidx.compose.material3.AlertDialog(
@@ -128,6 +151,8 @@ fun SafeAlertNavGraph(
             onNotificationOpened()
         }
     }
+=======
+>>>>>>> origin/main
 
     Scaffold(
         bottomBar = {
@@ -158,10 +183,13 @@ fun SafeAlertNavGraph(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+<<<<<<< HEAD
             composable("user_manual") { com.siddesh.smsalerts.ui.screens.settings.UserManualScreen { safePopBack() } }
             composable("incident/{id}", arguments = listOf(navArgument("id") { type = NavType.StringType })) { entry ->
                 com.siddesh.smsalerts.ui.screens.history.IncidentScreen(entry.arguments?.getString("id").orEmpty()) { safePopBack() }
             }
+=======
+>>>>>>> origin/main
             // Splash Screen
             composable(Screen.Splash.route) {
                 SplashScreen(
@@ -267,7 +295,10 @@ fun SafeAlertNavGraph(
                         navController.navigate(Screen.EmergencyReview.createRoute(emergencyType.name))
                     },
                     onNavigateToCountdown = { emergencyType, triggerSource ->
+<<<<<<< HEAD
                         homeViewModel.resetSosStage()
+=======
+>>>>>>> origin/main
                         navController.navigate(Screen.SosCountdown.createRoute(emergencyType, triggerSource))
                     },
                     onNavigateToContacts = {
@@ -283,6 +314,7 @@ fun SafeAlertNavGraph(
                         navController.navigate(Screen.Settings.route)
                     },
                     onNavigateToProfile = {
+<<<<<<< HEAD
                         navController.navigate(Screen.Profile.route) { launchSingleTop = true }
                     },
                     onNavigateToAbout = {
@@ -302,6 +334,15 @@ fun SafeAlertNavGraph(
                     },
                     onNavigateToIncident = { incidentId ->
                         navController.navigate("incident/$incidentId") { launchSingleTop = true }
+=======
+                        navController.navigate(Screen.Profile.route)
+                    },
+                    onNavigateToAbout = {
+                        navController.navigate(Screen.About.route)
+                    },
+                    onNavigateToTriggers = {
+                        navController.navigate(Screen.EmergencyTriggers.route)
+>>>>>>> origin/main
                     }
                 )
             }
@@ -331,9 +372,12 @@ fun SafeAlertNavGraph(
 
                 com.siddesh.smsalerts.ui.screens.sos.EmergencyReviewScreen(
                     emergencyType = emergencyType,
+<<<<<<< HEAD
                     onCountdownStarted = {
                         navController.navigate(Screen.SosCountdown.createRoute(emergencyType.name, "REVIEW")) { launchSingleTop = true }
                     },
+=======
+>>>>>>> origin/main
                     contactsViewModel = contactsViewModel,
                     homeViewModel = homeViewModel,
                     onBackClick = {
@@ -393,8 +437,12 @@ fun SafeAlertNavGraph(
 
             composable(Screen.Profile.route) {
                 ProfileScreen(
+<<<<<<< HEAD
                     onNavigateToContacts = { navController.navigate(Screen.Contacts.route) { launchSingleTop = true } },
                     onContinue = { navController.navigate(Screen.Home.route) { popUpTo(Screen.Home.route); launchSingleTop = true } },                    viewModel = profileViewModel,
+=======
+                    viewModel = profileViewModel,
+>>>>>>> origin/main
                     onLogoutSuccess = {
                         authViewModel.logout()
                         navController.navigate(Screen.Login.route) {
@@ -405,7 +453,11 @@ fun SafeAlertNavGraph(
                         navController.navigate(Screen.Settings.route)
                     },
                     onNavigateToAbout = {
+<<<<<<< HEAD
                         navController.navigate(Screen.About.route) { launchSingleTop = true }
+=======
+                        navController.navigate(Screen.About.route)
+>>>>>>> origin/main
                     }
                 )
             }
@@ -428,6 +480,7 @@ fun SafeAlertNavGraph(
                     customMessage = "",
                     triggerSource = triggerSource,
                     sosViewModel = sosViewModel,
+<<<<<<< HEAD
                     onIncident = { incidentId ->
                         navController.navigate("incident/$incidentId") {
                             popUpTo(Screen.SosCountdown.route) { inclusive = true }
@@ -440,6 +493,12 @@ fun SafeAlertNavGraph(
                         if (!navController.popBackStack(Screen.Home.route, false)) {
                             navController.navigate(Screen.Home.route) { launchSingleTop = true }
                         }
+=======
+                    onNavigateBack = {
+                        historyViewModel.loadHistory()
+                        homeViewModel.refreshDashboard()
+                        navController.popBackStack()
+>>>>>>> origin/main
                     }
                 )
             }
@@ -462,8 +521,14 @@ fun SafeAlertNavGraph(
             // Settings & About
             composable(Screen.Settings.route) {
                 SettingsScreen(
+<<<<<<< HEAD
                     onUserManual = { navController.navigate("user_manual") { launchSingleTop = true } },
                     onBackClick = safePopBack,
+=======
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+>>>>>>> origin/main
                     onNavigateToContacts = {
                         navController.navigate(Screen.Contacts.route)
                     },
@@ -471,7 +536,11 @@ fun SafeAlertNavGraph(
                         navController.navigate(Screen.EmergencyTriggers.route)
                     },
                     onNavigateToAbout = {
+<<<<<<< HEAD
                         navController.navigate(Screen.About.route) { launchSingleTop = true }
+=======
+                        navController.navigate(Screen.About.route)
+>>>>>>> origin/main
                     },
                     onLogoutClick = {
                         authViewModel.logout()
@@ -484,6 +553,7 @@ fun SafeAlertNavGraph(
 
             composable(Screen.EmergencyTriggers.route) {
                 com.siddesh.smsalerts.ui.screens.settings.EmergencyTriggersScreen(
+<<<<<<< HEAD
                     onBackClick = safePopBack
                 )
             }
@@ -499,10 +569,15 @@ fun SafeAlertNavGraph(
                     onBackClick = safePopBack,
                     onNavigateToSos = {
                         navController.navigate(Screen.SosCountdown.createRoute("PANIC", "WOMENS_SAFETY"))
+=======
+                    onBackClick = {
+                        navController.popBackStack()
+>>>>>>> origin/main
                     }
                 )
             }
 
+<<<<<<< HEAD
             composable(Screen.TrustedCircle.route) {
                 com.siddesh.smsalerts.ui.screens.trustedcircle.TrustedCircleScreen(
                     onIncidentClick = { navController.navigate("incident/$it") { launchSingleTop = true } },
@@ -513,6 +588,13 @@ fun SafeAlertNavGraph(
             composable(Screen.About.route) {
                 AboutScreen(
                     onBackClick = safePopBack
+=======
+            composable(Screen.About.route) {
+                AboutScreen(
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+>>>>>>> origin/main
                 )
             }
         }

@@ -21,9 +21,12 @@ class ProfileViewModel @JvmOverloads constructor(
 ) : ViewModel() {
 
     val userProfile: StateFlow<UserProfile?> = userRepository.userProfile
+<<<<<<< HEAD
     val phoneVerification = com.siddesh.smsalerts.data.repository.PhoneVerification(viewModelScope)
     private val _enabledContactsCount = MutableStateFlow(0)
     val enabledContactsCount = _enabledContactsCount.asStateFlow()
+=======
+>>>>>>> origin/main
 
     private val _contactsCount = MutableStateFlow(0)
     val contactsCount: StateFlow<Int> = _contactsCount.asStateFlow()
@@ -43,14 +46,20 @@ class ProfileViewModel @JvmOverloads constructor(
     init {
         viewModelScope.launch {
             authRepository.authState.collectLatest { state ->
+<<<<<<< HEAD
                 phoneVerification.refreshAccount()
+=======
+>>>>>>> origin/main
                 if (state is com.siddesh.smsalerts.data.repository.AuthState.SignedIn) {
                     val uid = state.user.uid
                     contactsJob?.cancel()
                     contactsJob = launch {
                         contactsRepository.getContactsFlow(uid).collectLatest { list ->
                             _contactsCount.value = list.size
+<<<<<<< HEAD
                             _enabledContactsCount.value = list.count { it.enabled && it.isActive }
+=======
+>>>>>>> origin/main
                         }
                     }
 
@@ -64,7 +73,10 @@ class ProfileViewModel @JvmOverloads constructor(
                     contactsJob?.cancel()
                     alertsJob?.cancel()
                     _contactsCount.value = 0
+<<<<<<< HEAD
                     _enabledContactsCount.value = 0
+=======
+>>>>>>> origin/main
                     _alertsCount.value = 0
                     _isLoading.value = false
                 }
@@ -76,16 +88,26 @@ class ProfileViewModel @JvmOverloads constructor(
         // Automatically observed via UserRepository.userProfile
     }
 
+<<<<<<< HEAD
     fun updateProfile(name: String, phoneNumber: String, dateOfBirth: String? = null, homeAddress: String = "", onSuccess: (() -> Unit)? = null) {
         if (_isLoading.value) return
+=======
+    fun updateProfile(name: String, phoneNumber: String, onSuccess: (() -> Unit)? = null) {
+>>>>>>> origin/main
         if (name.isBlank()) {
             _updateMessage.value = "Name cannot be empty."
             return
         }
 
+<<<<<<< HEAD
         _isLoading.value = true
         viewModelScope.launch {
             when (val result = userRepository.updateProfile(name, phoneNumber, dateOfBirth, homeAddress)) {
+=======
+        viewModelScope.launch {
+            _isLoading.value = true
+            when (val result = userRepository.updateProfile(name, phoneNumber)) {
+>>>>>>> origin/main
                 is Resource.Success -> {
                     _updateMessage.value = "Profile updated successfully."
                     onSuccess?.invoke()

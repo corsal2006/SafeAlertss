@@ -1,6 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+<<<<<<< HEAD
     function signedIn() { return request.auth != null; }
     function owner(uid) { return signedIn() && request.auth.uid == uid; }
     function deletedIncident(uid, id) {
@@ -290,5 +291,46 @@ service cloud.firestore {
           && request.auth.uid in getAfter(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberUids));
     }
     match /{document=**} { allow read, write: if false; }
+=======
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profile document: users/{userId}
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Trusted Contacts sub-collection: users/{userId}/trustedContacts/{contactId}
+      match /trustedContacts/{contactId} {
+        allow read, write, delete: if isOwner(userId);
+      }
+
+      // Backwards-compatible emergencyContacts sub-collection
+      match /emergencyContacts/{contactId} {
+        allow read, write, delete: if isOwner(userId);
+      }
+
+      // Alerts audit sub-collection: users/{userId}/alerts/{alertId}
+      match /alerts/{alertId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      // Backwards-compatible emergencyAlerts sub-collection
+      match /emergencyAlerts/{alertId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+    }
+
+    // Deny all other cross-user access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+>>>>>>> origin/main
   }
 }
