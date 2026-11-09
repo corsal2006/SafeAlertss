@@ -45,11 +45,16 @@ class HomeViewModel @JvmOverloads constructor(
     private val locationService: LocationService = LocationService(application)
 ) : AndroidViewModel(application) {
 
+    private val emergencyManager = com.siddesh.smsalerts.service.EmergencyManager.getInstance(application)
+    val locationRepository = com.siddesh.smsalerts.data.location.LocationRepository.getInstance(application)
     private val smsSender = SmsSender(application)
     private val preferencesDataStore = UserPreferencesDataStore(application)
     val safetyCheckInManager = SafetyCheckInManager(application)
 
     val userProfile: StateFlow<UserProfile?> = userRepository.userProfile
+    val currentLocation: StateFlow<com.siddesh.smsalerts.data.location.LocationResult?> = locationRepository.currentLocation
+    val lastValidLocation: StateFlow<com.siddesh.smsalerts.data.location.LocationResult.Success?> = locationRepository.lastValidLocation
+    val isLocating: StateFlow<Boolean> = locationRepository.isLocating
 
     private val _contactsCount = MutableStateFlow(0)
     val contactsCount: StateFlow<Int> = _contactsCount.asStateFlow()
@@ -76,6 +81,7 @@ class HomeViewModel @JvmOverloads constructor(
     val userPreferences: StateFlow<AppUserPreferences> = _userPreferences.asStateFlow()
 
     val safetyCheckInState: StateFlow<SafetyCheckInState> = safetyCheckInManager.checkInState
+    val activeIncident: StateFlow<com.siddesh.smsalerts.data.model.EmergencyIncident?> = emergencyManager.activeIncident
 
     private val _serviceReadiness = MutableStateFlow(ServiceReadinessState())
     val serviceReadiness: StateFlow<ServiceReadinessState> = _serviceReadiness.asStateFlow()
@@ -111,6 +117,7 @@ class HomeViewModel @JvmOverloads constructor(
         val hasLoc = locationService.hasLocationPermission() && locationService.isGpsEnabled()
         _isLocationReady.value = hasLoc
         val hasSms = smsSender.hasSmsPermission()
+        emergencyManager.refreshActiveIncident()
 
         val userId = authRepository.currentUserId
         if (userId != null) {
@@ -137,24 +144,20 @@ class HomeViewModel @JvmOverloads constructor(
     }
 
     private fun recomputeReadiness(contactsCount: Int, hasSms: Boolean, hasLoc: Boolean) {
-        val isReady = contactsCount > 0 && hasSms
-        val title = when {
-            contactsCount == 0 -> "Setup Required: No Contacts"
-            !hasSms -> "Setup Required: SMS Permission"
-            else -> "SYSTEM READY"
-        }
+        val hasContacts = contactsCount > 0
+        val isReady = hasContacts
+        val title = if (isReady) "SYSTEM ACTIVE" else "SETUP REQUIRED"
         val subtitle = when {
-            contactsCount == 0 -> "Add at least 1 trusted contact to broadcast emergency alerts"
-            !hasSms -> "Grant SEND_SMS permission for automatic direct dispatch"
-            !hasLoc -> "Active (Location disabled - alerts will send without coordinates)"
-            else -> "Your emergency contacts are available."
+            !hasContacts -> "Configure trusted contacts to receive emergency alerts."
+            !hasLoc -> "Location permission required for GPS dispatch."
+            else -> "Ready for emergency dispatch via SMS, Cloud and BLE mesh."
         }
 
         _serviceReadiness.value = ServiceReadinessState(
             isReady = isReady,
             title = title,
             subtitle = subtitle,
-            hasContacts = contactsCount > 0,
+            hasContacts = hasContacts,
             hasSmsPermission = hasSms,
             hasLocationReady = hasLoc
         )
@@ -213,12 +216,32 @@ class HomeViewModel @JvmOverloads constructor(
         safetyCheckInManager.markSafeOrCancel()
     }
 
+    fun resolveEscalatedCheckIn() {
+        safetyCheckInManager.resolveEscalatedCheckIn()
+    }
+
     fun refreshLocation() {
-        val hasLoc = locationService.hasLocationPermission() && locationService.isGpsEnabled()
+        val hasLoc = locationRepository.hasLocationPermission() && locationRepository.isGpsEnabled()
         _isLocationReady.value = hasLoc
+        if (hasLoc) {
+            viewModelScope.launch {
+                locationRepository.refreshLocation()
+            }
+        }
     }
 
     fun refreshUser() {
+        refreshDashboard()
+    }
+
+    fun resolveActiveEmergency(incidentId: String) {
+        emergencyManager.resolveEmergency(incidentId)
+        emergencyManager.resetToIdle()
+        refreshDashboard()
+    }
+
+    fun resetSosStage() {
+        emergencyManager.resetToIdle()
         refreshDashboard()
     }
 }

@@ -126,7 +126,8 @@ fun EmergencyReviewScreen(
     onBackClick: () -> Unit,
     onNavigateToContacts: () -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToHome: () -> Unit
+    onNavigateToHome: () -> Unit,
+    onCountdownStarted: () -> Unit
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -136,7 +137,7 @@ fun EmergencyReviewScreen(
     val allContacts by contactsViewModel.contacts.collectAsState()
 
     // Location state
-    val locationService = remember { LocationService(context) }
+    val locationRepo = remember { com.siddesh.smsalerts.data.location.LocationRepository.getInstance(context) }
     var isAcquiringLocation by remember { mutableStateOf(false) }
     var locationMapsUrl by remember { mutableStateOf<String?>(null) }
     var locationLat by remember { mutableStateOf<Double?>(null) }
@@ -159,13 +160,13 @@ fun EmergencyReviewScreen(
 
     // Location fetch logic
     fun fetchLocation() {
-        if (!locationService.hasLocationPermission()) {
+        if (!locationRepo.hasLocationPermission()) {
             locationStatusText = "Location permission denied"
             showLocationDeniedDialog = true
             return
         }
 
-        if (!locationService.isGpsEnabled()) {
+        if (!locationRepo.isGpsEnabled()) {
             locationStatusText = "GPS disabled"
             showGpsDisabledDialog = true
             return
@@ -175,12 +176,12 @@ fun EmergencyReviewScreen(
         locationStatusText = "Getting your location..."
 
         coroutineScope.launch {
-            when (val res = locationService.getCurrentLocation(timeoutMs = 7000L)) {
+            when (val res = locationRepo.refreshLocation(timeoutMs = 7000L)) {
                 is LocationResult.Success -> {
                     locationLat = res.latitude
                     locationLng = res.longitude
                     locationMapsUrl = res.mapsUrl
-                    locationStatusText = "Location attached ✓"
+                    locationStatusText = "${res.badgeLabel}. Preview only until SOS location sharing is enabled."
                 }
                 is LocationResult.PermissionDenied -> {
                     locationStatusText = "Location permission denied"
@@ -214,7 +215,7 @@ fun EmergencyReviewScreen(
 
     // Initial check for location
     LaunchedEffect(Unit) {
-        if (locationService.hasLocationPermission()) {
+        if (locationRepo.hasLocationPermission()) {
             fetchLocation()
         } else {
             locationStatusText = "Location permission not granted"
@@ -257,146 +258,21 @@ fun EmergencyReviewScreen(
     val alertsRepository = remember { AlertsRepository() }
     val authRepository = remember { AuthRepository() }
 
-    // Dispatch execution function
+    // All manual routes share durable cancellation and dispatch, including selected recipients.
     fun executeSendAlert() {
-        val selected = allContacts.filter { selectedContactIds.contains(it.id) }
-        if (selected.isEmpty()) {
-            Toast.makeText(context, "Please select at least one contact", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        isSending = true
-        coroutineScope.launch {
-            val userId = authRepository.currentUserId.orEmpty()
-            val phoneNumbers = selected.map { it.phoneNumber }
-            val recipientIds = selected.map { it.id }
-
-            val hasSmsPerm = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.SEND_SMS
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (hasSmsPerm) {
-                // Try direct SMS
-                val dispatchResult = smsSender.sendEmergencySms(selected, customMessage)
-                if (dispatchResult.successfulCount > 0) {
-                    // Log to Firestore
-                    val triggerSrc = when (emergencyType) {
-                        EmergencyType.MEDICAL -> "MEDICAL"
-                        EmergencyType.ACCIDENT -> "ACCIDENT"
-                        EmergencyType.FIRE -> "FIRE"
-                        else -> "BUTTON"
-                    }
-
-                    val alert = EmergencyAlert(
-                        emergencyType = emergencyType.title,
-                        triggerSource = triggerSrc,
-                        message = customMessage,
-                        recipientIds = recipientIds,
-                        recipientPhoneNumbers = phoneNumbers,
-                        latitude = locationLat,
-                        longitude = locationLng,
-                        mapsUrl = locationMapsUrl,
-                        locationAvailable = !locationMapsUrl.isNullOrBlank(),
-                        status = "SMS Sent",
-                        sendMethod = "Direct SMS",
-                        createdAt = System.currentTimeMillis()
-                    )
-                    if (userId.isNotBlank()) {
-                        alertsRepository.saveEmergencyAlert(userId, alert)
-                    }
-                    HapticUtils.vibrateEmergencyAlertSent(context)
-                    sendOutcome = SendAlertOutcome.DirectSmsSuccess(
-                        recipientCount = dispatchResult.successfulCount,
-                        mapsUrl = locationMapsUrl
-                    )
-                } else {
-                    // Fallback to SMS composer
-                    val fallbackIntent = smsSender.createFallbackSmsIntent(phoneNumbers, customMessage)
-                    val triggerSrc = when (emergencyType) {
-                        EmergencyType.MEDICAL -> "MEDICAL"
-                        EmergencyType.ACCIDENT -> "ACCIDENT"
-                        EmergencyType.FIRE -> "FIRE"
-                        else -> "BUTTON"
-                    }
-
-                    val alert = EmergencyAlert(
-                        emergencyType = emergencyType.title,
-                        triggerSource = triggerSrc,
-                        message = customMessage,
-                        recipientIds = recipientIds,
-                        recipientPhoneNumbers = phoneNumbers,
-                        latitude = locationLat,
-                        longitude = locationLng,
-                        mapsUrl = locationMapsUrl,
-                        locationAvailable = !locationMapsUrl.isNullOrBlank(),
-                        status = "Message Composer Opened",
-                        sendMethod = "SMS Composer Fallback",
-                        createdAt = System.currentTimeMillis(),
-                        failureReason = dispatchResult.failureReason
-                    )
-                    if (userId.isNotBlank()) {
-                        alertsRepository.saveEmergencyAlert(userId, alert)
-                    }
-                    context.startActivity(fallbackIntent)
-                    sendOutcome = SendAlertOutcome.ComposerOpened(
-                        recipientCount = selected.size,
-                        message = "Android messaging composer opened with recipient details pre-filled."
-                    )
-                }
-            } else {
-                // Direct SMS permission not granted -> Use official composer fallback
-                val fallbackIntent = smsSender.createFallbackSmsIntent(phoneNumbers, customMessage)
-                val triggerSrc = when (emergencyType) {
-                    EmergencyType.MEDICAL -> "MEDICAL"
-                    EmergencyType.ACCIDENT -> "ACCIDENT"
-                    EmergencyType.FIRE -> "FIRE"
-                    else -> "BUTTON"
-                }
-
-                val alert = EmergencyAlert(
-                    emergencyType = emergencyType.title,
-                    triggerSource = triggerSrc,
-                    message = customMessage,
-                    recipientIds = recipientIds,
-                    recipientPhoneNumbers = phoneNumbers,
-                    latitude = locationLat,
-                    longitude = locationLng,
-                    mapsUrl = locationMapsUrl,
-                    locationAvailable = !locationMapsUrl.isNullOrBlank(),
-                    status = "Message Composer Opened",
-                    sendMethod = "SMS Composer",
-                    createdAt = System.currentTimeMillis(),
-                    failureReason = "SEND_SMS permission not granted; fallback composer launched."
-                )
-                if (userId.isNotBlank()) {
-                    alertsRepository.saveEmergencyAlert(userId, alert)
-                }
-                context.startActivity(fallbackIntent)
-                sendOutcome = SendAlertOutcome.ComposerOpened(
-                    recipientCount = selected.size,
-                    message = "Opened SMS composer for carrier dispatch."
-                )
-            }
-            isSending = false
-        }
+        if (isSending) return
+        val selected = allContacts.filter { it.enabled && it.isActive && selectedContactIds.contains(it.id) }
+        com.siddesh.smsalerts.service.EmergencyManager.getInstance(context).startCountdown(
+            triggerSource = "REVIEW", emergencyType = emergencyType.title,
+            customMessage = customMessage, recipientPhones = selected.map { it.phoneNumber })
+        onCountdownStarted()
     }
-
-    // SEND_SMS permission launcher
-    val smsPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        executeSendAlert()
-    }
-
-    fun initiateSend() {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
-            executeSendAlert()
-        } else {
-            // Request permission or fallback
-            smsPermissionLauncher.launch(Manifest.permission.SEND_SMS)
-        }
-    }
+    var showSosSetup by remember { mutableStateOf(false) }
+    fun initiateSend() { showSosSetup = true }
+    if (showSosSetup) com.siddesh.smsalerts.ui.components.EmergencyPermissionDialog(
+        onDismiss = { showSosSetup = false }, onPermissionsUpdated = {},
+        onNavigateToContacts = { showSosSetup = false; onNavigateToContacts() },
+        onContinue = { showSosSetup = false; executeSendAlert() })
 
     Scaffold(
         topBar = {
@@ -585,7 +461,7 @@ fun EmergencyReviewScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "RECIPIENTS (${selectedContactIds.size} OF ${allContacts.size})",
+                    text = "SAVED CONTACTS (${selectedContactIds.size} OF ${allContacts.size}) · SMS OFF",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextMuted,
@@ -626,7 +502,7 @@ fun EmergencyReviewScreen(
                             fontSize = 14.sp
                         )
                         Text(
-                            text = "Add at least one contact so SafeAlert knows who to notify.",
+                            text = "Add at least one contact so SafeAlerts knows who to notify.",
                             color = TextSecondary,
                             fontSize = 12.sp
                         )
@@ -702,7 +578,7 @@ fun EmergencyReviewScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "EMERGENCY SMS TEXT",
+                    text = "EMERGENCY MESSAGE · BLE / CLOUD",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextMuted,
@@ -774,7 +650,7 @@ fun EmergencyReviewScreen(
                             .clip(RoundedCornerShape(14.dp))
                             .background(EmergencyRed)
                             .pointerInput(selectedContactIds.size, isSending) {
-                                if (selectedContactIds.isNotEmpty() && !isSending) {
+                                if (!isSending) {
                                     detectTapGestures(
                                         onTap = {
                                             // Fallback tap: opens confirmation dialog
@@ -863,7 +739,7 @@ fun EmergencyReviewScreen(
             onDismissRequest = { showLocationDeniedDialog = false },
             title = { Text("Location Permission Denied", fontWeight = FontWeight.Bold) },
             text = {
-                Text("SafeAlert attaches a Google Maps link to your SMS so responders know where you are. Send alert without location?")
+                Text("Your emergency can include a location link. Continue without coordinates?")
             },
             confirmButton = {
                 Button(

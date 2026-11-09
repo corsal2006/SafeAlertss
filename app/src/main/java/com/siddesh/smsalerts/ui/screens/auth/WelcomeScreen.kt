@@ -126,7 +126,7 @@ fun WelcomeScreen(
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_app_logo),
-                        contentDescription = "Safe Alerts Logo",
+                        contentDescription = "SafeAlerts Logo",
                         tint = Color.White,
                         modifier = Modifier.size(56.dp)
                     )
@@ -135,7 +135,7 @@ fun WelcomeScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Safe Alerts",
+                    text = "SafeAlerts",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = TextPrimary,
@@ -145,7 +145,7 @@ fun WelcomeScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = "SMS EMERGENCY ALERT SYSTEM",
+                    text = "PERSONAL EMERGENCY ALERT SYSTEM",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = EmergencyRed,

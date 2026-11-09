@@ -40,7 +40,7 @@ class ContactsViewModel @JvmOverloads constructor(
                         _isLoading.value = false
                     }
                 } else if (state is com.siddesh.smsalerts.data.repository.AuthState.SignedOut) {
-                    _contacts.value = emptyList()
+                    _contacts.value = com.siddesh.smsalerts.data.repository.LocalContactsCache.getContacts()
                     _isLoading.value = false
                 }
             }
@@ -48,7 +48,11 @@ class ContactsViewModel @JvmOverloads constructor(
     }
 
     fun loadContacts() {
-        val userId = authRepository.currentUserId ?: return
+        val userId = authRepository.currentUserId
+        if (userId.isNullOrBlank()) {
+            _contacts.value = com.siddesh.smsalerts.data.repository.LocalContactsCache.getContacts()
+            return
+        }
         viewModelScope.launch {
             _isLoading.value = true
             contactsRepository.getContactsFlow(userId).collectLatest { list ->
@@ -75,11 +79,7 @@ class ContactsViewModel @JvmOverloads constructor(
         onSuccess: (() -> Unit)? = null
     ) {
         val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-        if (user == null || user.uid.isBlank()) {
-            _errorMessage.value = "AUTH_REQUIRED: Please sign in before adding trusted contacts."
-            return
-        }
-        val userId = user.uid
+        val userId = user?.uid ?: "local_user"
 
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) {
@@ -100,6 +100,24 @@ class ContactsViewModel @JvmOverloads constructor(
         }
         if (duplicate != null) {
             _errorMessage.value = "A contact with this number already exists: ${duplicate.name} (${duplicate.phoneNumber})."
+            return
+        }
+
+        if (user == null || user.uid.isBlank()) {
+            val contact = EmergencyContact(
+                name = trimmedName,
+                phoneNumber = normalizedPhone,
+                relationship = relationship.trim().ifBlank { "Emergency Contact" },
+                enabled = enabled,
+                isActive = enabled,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            com.siddesh.smsalerts.data.repository.LocalContactsCache.addOrUpdateContact(contact)
+            _contacts.value = com.siddesh.smsalerts.data.repository.LocalContactsCache.getContacts()
+            _errorMessage.value = null
+            _successMessage.value = "Trusted contact '$trimmedName' saved locally."
+            onSuccess?.invoke()
             return
         }
 
@@ -132,14 +150,19 @@ class ContactsViewModel @JvmOverloads constructor(
     }
 
     fun toggleContactActive(contact: EmergencyContact) {
-        val userId = authRepository.currentUserId ?: return
+        val userId = authRepository.currentUserId
         val newEnabled = !contact.enabled
+        val updated = contact.copy(
+            enabled = newEnabled,
+            isActive = newEnabled,
+            updatedAt = System.currentTimeMillis()
+        )
+        if (userId.isNullOrBlank()) {
+            com.siddesh.smsalerts.data.repository.LocalContactsCache.addOrUpdateContact(updated)
+            _contacts.value = com.siddesh.smsalerts.data.repository.LocalContactsCache.getContacts()
+            return
+        }
         viewModelScope.launch {
-            val updated = contact.copy(
-                enabled = newEnabled,
-                isActive = newEnabled,
-                updatedAt = System.currentTimeMillis()
-            )
             contactsRepository.updateContact(userId, updated)
         }
     }
@@ -196,7 +219,14 @@ class ContactsViewModel @JvmOverloads constructor(
     }
 
     fun deleteContact(contactId: String) {
-        val userId = authRepository.currentUserId ?: return
+        val userId = authRepository.currentUserId
+        if (userId.isNullOrBlank()) {
+            com.siddesh.smsalerts.data.repository.LocalContactsCache.removeContact(contactId)
+            _contacts.value = com.siddesh.smsalerts.data.repository.LocalContactsCache.getContacts()
+            _errorMessage.value = null
+            _successMessage.value = "Contact removed."
+            return
+        }
         viewModelScope.launch {
             _isLoading.value = true
             when (val result = contactsRepository.deleteContact(userId, contactId)) {

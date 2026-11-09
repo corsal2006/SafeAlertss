@@ -46,12 +46,14 @@ class SosViewModel @JvmOverloads constructor(
 ) : AndroidViewModel(application) {
 
     val stage: StateFlow<SosStage> = emergencyManager.stage
+    val incidentId: String? get() = emergencyManager.currentIncidentId
+    fun resumeIncident(id: String) = emergencyManager.resumeIncident(id)
 
     fun startCountdown(
         emergencyType: String,
         customMessage: String = "",
         triggerSource: String = "BUTTON",
-        durationSeconds: Int = 5
+        durationSeconds: Int? = null
     ) {
         emergencyManager.startCountdown(
             triggerSource = triggerSource,

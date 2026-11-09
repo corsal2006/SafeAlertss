@@ -48,6 +48,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -82,20 +85,35 @@ fun SosCountdownScreen(
     customMessage: String,
     triggerSource: String = "BUTTON",
     sosViewModel: SosViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onIncident: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val stage by sosViewModel.stage.collectAsState()
+    var attachedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var countdownTotal by rememberSaveable { mutableStateOf(3) }
+    var wasActive by rememberSaveable { mutableStateOf(false) }
+    var leaving by androidx.compose.runtime.remember { mutableStateOf(false) }
+    fun leaveOnce() { if (!leaving) { leaving = true; onNavigateBack() } }
+    LaunchedEffect(stage) {
+        (stage as? SosStage.Countdown)?.secondsLeft?.let { countdownTotal = maxOf(countdownTotal, it) }
+        if (stage is SosStage.Countdown || stage is SosStage.TriggerDetected || stage is SosStage.AcquiringLocation || stage is SosStage.TransmittingSms || stage is SosStage.SavingCloudAudit || stage is SosStage.Dispatching || stage is SosStage.EmergencyActive) {
+            wasActive = true
+        }
+    }
 
     BackHandler {
-        if (stage is SosStage.Countdown) {
+        if (stage is SosStage.Countdown || stage is SosStage.TriggerDetected) {
             sosViewModel.cancelEmergency()
-        }
-        onNavigateBack()
+        } else leaveOnce()
     }
 
     LaunchedEffect(Unit) {
-        sosViewModel.startCountdown(emergencyType, customMessage, triggerSource)
+        if (attachedId != null) sosViewModel.resumeIncident(attachedId!!)
+        else {
+            sosViewModel.startCountdown(emergencyType, customMessage, triggerSource)
+            attachedId = sosViewModel.incidentId
+        }
     }
 
     Box(
@@ -108,6 +126,7 @@ fun SosCountdownScreen(
             is SosStage.Countdown -> {
                 CountdownView(
                     secondsLeft = currentStage.secondsLeft,
+                    totalSeconds = countdownTotal,
                     emergencyType = emergencyType,
                     customMessage = customMessage,
                     triggerSource = triggerSource,
@@ -116,7 +135,6 @@ fun SosCountdownScreen(
                     },
                     onCancel = {
                         sosViewModel.cancelEmergency()
-                        onNavigateBack()
                     }
                 )
             }
@@ -124,15 +142,22 @@ fun SosCountdownScreen(
             is SosStage.TransmittingSms,
             is SosStage.SavingCloudAudit,
             is SosStage.Dispatching,
-            is SosStage.EmergencyActive,
             is SosStage.TriggerDetected -> {
                 DispatchingProgressView(stage = currentStage)
+            }
+            is SosStage.EmergencyActive -> {
+                Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("Emergency active", color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("Open the saved incident for actual channel outcomes and to resolve it when safe.", color = TextSecondary)
+                    Button(onClick = { sosViewModel.incidentId?.let(onIncident) }, modifier = Modifier.fillMaxWidth()) { Text("Open incident") }
+                    OutlinedButton(onClick = { leaveOnce() }, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+                }
             }
             is SosStage.Completed -> {
                 DispatchResultView(
                     alert = currentStage.alert,
                     smsResult = currentStage.smsResult,
-                    onDone = onNavigateBack
+                    onDone = { leaveOnce() }
                 )
             }
             is SosStage.Error -> {
@@ -150,14 +175,33 @@ fun SosCountdownScreen(
                             // Safely handled
                         }
                     },
-                    onBack = onNavigateBack
+                    onBack = { leaveOnce() }
                 )
             }
             is SosStage.Cancelled,
-            is SosStage.Resolved,
+            is SosStage.Resolved -> {
+                if (wasActive) {
+                    LaunchedEffect(Unit) {
+                        leaveOnce()
+                    }
+                } else {
+                    CircularProgressIndicator(color = EmergencyRed)
+                }
+            }
             is SosStage.Idle -> {
-                LaunchedEffect(Unit) {
-                    onNavigateBack()
+                if (attachedId != null) {
+                    LaunchedEffect(Unit) {
+                        leaveOnce()
+                    }
+                } else {
+                    // Initial transition before startCountdown attaches; fallback to back navigation if stuck
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(3000)
+                        if (stage is SosStage.Idle) {
+                            leaveOnce()
+                        }
+                    }
+                    CircularProgressIndicator(color = EmergencyRed)
                 }
             }
         }
@@ -167,6 +211,7 @@ fun SosCountdownScreen(
 @Composable
 private fun CountdownView(
     secondsLeft: Int,
+    totalSeconds: Int,
     emergencyType: String,
     customMessage: String,
     triggerSource: String = "BUTTON",
@@ -244,7 +289,7 @@ private fun CountdownView(
                     style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
                 )
 
-                val sweep = (secondsLeft / 5f) * 360f
+                val sweep = (secondsLeft.toFloat() / totalSeconds.coerceAtLeast(1)).coerceIn(0f, 1f) * 360f
                 drawArc(
                     color = EmergencyRed,
                     startAngle = -90f,
@@ -317,7 +362,7 @@ private fun CountdownView(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Real-time GPS link will be appended to SMS",
+                        text = "A location link is included when enabled and a fix is available",
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
@@ -385,7 +430,7 @@ private fun CountdownView(
 private fun DispatchingProgressView(stage: SosStage) {
     val stageTitle = when (stage) {
         is SosStage.AcquiringLocation -> "1/3 Acquiring GPS Location"
-        is SosStage.TransmittingSms -> "2/3 Transmitting Native SMS"
+        is SosStage.TransmittingSms -> "2/3 Transmitting Emergency SMS"
         is SosStage.SavingCloudAudit -> "3/3 Storing Emergency Record"
         is SosStage.Dispatching -> "Broadcasting Multi-Transport SOS"
         is SosStage.EmergencyActive -> "Emergency Active (Relay & Live Location)"
@@ -395,9 +440,9 @@ private fun DispatchingProgressView(stage: SosStage) {
 
     val stageDescription = when (stage) {
         is SosStage.AcquiringLocation -> "Connecting to Android Fused Location Provider for accurate GPS coordinates..."
-        is SosStage.TransmittingSms -> "Executing cellular SMS Manager dispatch to configured emergency contacts..."
+        is SosStage.TransmittingSms -> "Transmitting direct emergency SMS alerts via cellular network to your trusted contacts..."
         is SosStage.SavingCloudAudit -> "Creating permanent encrypted audit record in Firebase Firestore..."
-        is SosStage.Dispatching -> "Transmitting via cellular SMS, offline BLE Mesh relay, and cloud audit..."
+        is SosStage.Dispatching -> "Attempting enabled BLE transfers and authorized cloud sync..."
         is SosStage.EmergencyActive -> "Broadcasting live periodic coordinates and BLE store-and-forward packets..."
         is SosStage.TriggerDetected -> "Verifying trigger parameters and countdown..."
         else -> "Finalizing..."
@@ -678,7 +723,7 @@ private fun DispatchErrorView(
             val buttonText = when {
                 isLocationIntent -> "ENABLE LOCATION IN SETTINGS"
                 isSettingsIntent -> "OPEN APP SETTINGS"
-                else -> "OPEN SYSTEM SMS APP"
+                else -> "OPEN SMS APP (CARRIER CHARGES MAY APPLY)"
             }
             val buttonIcon = when {
                 isLocationIntent -> Icons.Default.MyLocation

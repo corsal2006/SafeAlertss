@@ -1,16 +1,23 @@
 package com.siddesh.smsalerts.data.sms
 
 import android.Manifest
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.telephony.SmsManager
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import com.siddesh.smsalerts.data.model.EmergencyContact
+import com.siddesh.smsalerts.service.EmergencyOutbox
 import com.siddesh.smsalerts.utils.DateUtils
+import com.siddesh.smsalerts.utils.PrivacyLog as Log
+import com.siddesh.smsalerts.utils.ValidationUtils
+
+private const val TAG = "SafeAlerts/SmsSender"
 
 class SmsSender(private val context: Context) {
 
@@ -21,9 +28,21 @@ class SmsSender(private val context: Context) {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    fun isAirplaneModeOn(): Boolean {
+        return try {
+            Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) != 0
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun getSimStateDescription(): Pair<Boolean, String> {
         val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
             ?: return Pair(false, "Telephony service unavailable on this device")
+
+        if (isAirplaneModeOn()) {
+            return Pair(false, "Airplane mode is enabled")
+        }
 
         return when (telephonyManager.simState) {
             TelephonyManager.SIM_STATE_READY -> Pair(true, "SIM Ready")
@@ -31,7 +50,25 @@ class SmsSender(private val context: Context) {
             TelephonyManager.SIM_STATE_PIN_REQUIRED -> Pair(false, "SIM locked (PIN required)")
             TelephonyManager.SIM_STATE_PUK_REQUIRED -> Pair(false, "SIM locked (PUK required)")
             TelephonyManager.SIM_STATE_NETWORK_LOCKED -> Pair(false, "Network locked")
-            else -> Pair(true, "SIM Ready")
+            else -> Pair(false, "SIM state unknown or unavailable")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    fun getSmsManager(): SmsManager? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java) ?: SmsManager.getDefault()
+            } else {
+                SmsManager.getDefault()
+            }
+        } catch (e: Exception) {
+            try {
+                SmsManager.getDefault()
+            } catch (_: Exception) {
+                Log.e(TAG, "Failed to initialize SmsManager: ${e.message}")
+                null
+            }
         }
     }
 
@@ -63,43 +100,54 @@ class SmsSender(private val context: Context) {
         }
     }
 
-    @Suppress("DEPRECATION")
-    private fun getSmsManager(): SmsManager? {
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                context.getSystemService(SmsManager::class.java)
-            } else {
-                SmsManager.getDefault()
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     fun sendEmergencySms(
         contacts: List<EmergencyContact>,
-        messageText: String
+        messageText: String,
+        incidentId: String? = null
     ): SmsDispatchResult {
+        val outbox = EmergencyOutbox(context)
+        val id = incidentId ?: "unknown"
+
         if (!hasSmsPermission()) {
+            if (incidentId != null) {
+                outbox.updateTransportStatus(incidentId, "SMS", "PERMISSION_DENIED")
+                for (contact in contacts) {
+                    val cleanPhone = ValidationUtils.normalizePhoneNumber(contact.phoneNumber)
+                    if (cleanPhone.isNotBlank()) {
+                        outbox.updateRecipientStatus(incidentId, cleanPhone, "PERMISSION_DENIED")
+                    }
+                }
+            }
+            Log.w(TAG, "SEND_SMS permission not granted. Native SMS dispatch aborted.")
             return SmsDispatchResult(
                 overallStatus = "Permission Denied",
                 successfulCount = 0,
                 totalCount = contacts.size,
                 contactStatuses = contacts.map {
-                    ContactSmsStatus(it.name, it.phoneNumber, "SEND_SMS permission not granted", false)
+                    ContactSmsStatus(it.name, it.phoneNumber, "SEND_SMS permission not granted", false, "Permission Denied")
                 },
-                failureReason = "SEND_SMS permission is not granted. You can use the SMS app composer instead."
+                failureReason = "SEND_SMS permission is not granted on this device."
             )
         }
 
         val (simReady, simMessage) = getSimStateDescription()
         if (!simReady) {
+            if (incidentId != null) {
+                outbox.updateTransportStatus(incidentId, "SMS", "SIM_ERROR")
+                for (contact in contacts) {
+                    val cleanPhone = ValidationUtils.normalizePhoneNumber(contact.phoneNumber)
+                    if (cleanPhone.isNotBlank()) {
+                        outbox.updateRecipientStatus(incidentId, cleanPhone, "SIM_ERROR")
+                    }
+                }
+            }
+            Log.w(TAG, "SIM/Telephony error: $simMessage. Native SMS dispatch aborted.")
             return SmsDispatchResult(
                 overallStatus = "SIM Error",
                 successfulCount = 0,
                 totalCount = contacts.size,
                 contactStatuses = contacts.map {
-                    ContactSmsStatus(it.name, it.phoneNumber, simMessage, false)
+                    ContactSmsStatus(it.name, it.phoneNumber, simMessage, false, simMessage)
                 },
                 failureReason = simMessage
             )
@@ -107,12 +155,16 @@ class SmsSender(private val context: Context) {
 
         val smsManager = getSmsManager()
         if (smsManager == null) {
+            if (incidentId != null) {
+                outbox.updateTransportStatus(incidentId, "SMS", "SERVICE_UNAVAILABLE")
+            }
+            Log.e(TAG, "SmsManager service could not be acquired.")
             return SmsDispatchResult(
                 overallStatus = "Service Unavailable",
                 successfulCount = 0,
                 totalCount = contacts.size,
                 contactStatuses = contacts.map {
-                    ContactSmsStatus(it.name, it.phoneNumber, "SmsManager service unavailable", false)
+                    ContactSmsStatus(it.name, it.phoneNumber, "SmsManager unavailable", false, "Service Unavailable")
                 },
                 failureReason = "Android telephony SMS service could not be initialized."
             )
@@ -122,44 +174,99 @@ class SmsSender(private val context: Context) {
         var successCount = 0
 
         for (contact in contacts) {
-            val cleanPhone = contact.phoneNumber.trim().replace(" ", "").replace("-", "")
-            if (cleanPhone.isEmpty()) {
+            val cleanPhone = ValidationUtils.normalizePhoneNumber(contact.phoneNumber)
+            if (!ValidationUtils.isValidPhoneNumber(cleanPhone)) {
+                if (incidentId != null) {
+                    outbox.updateRecipientStatus(incidentId, contact.phoneNumber, "INVALID_PHONE")
+                }
                 contactStatuses.add(
-                    ContactSmsStatus(contact.name, contact.phoneNumber, "Invalid Phone Number", false)
+                    ContactSmsStatus(contact.name, contact.phoneNumber, "Invalid Phone Number", false, "Invalid Phone Number")
                 )
                 continue
             }
 
+            if (incidentId != null) {
+                val reserved = outbox.reserveRecipient(incidentId, cleanPhone)
+                if (!reserved) {
+                    Log.d(TAG, "Recipient already reserved or sent for incident $incidentId. Skipping duplicate send.")
+                    val existingStatus = outbox.getIncident(incidentId)?.recipientStatuses?.get(cleanPhone) ?: "ALREADY_SUBMITTED"
+                    contactStatuses.add(
+                        ContactSmsStatus(contact.name, contact.phoneNumber, existingStatus, true)
+                    )
+                    successCount++
+                    continue
+                }
+            }
+
             try {
                 val dividedParts = smsManager.divideMessage(messageText)
-                if (dividedParts.size > 1) {
+                val totalParts = dividedParts.size
+
+                val sentIntents = ArrayList<PendingIntent>()
+                val deliveryIntents = ArrayList<PendingIntent>()
+
+                for (partIndex in 0 until totalParts) {
+                    val reqCodeSent = ((id.hashCode() * 31 + cleanPhone.hashCode()) * 31 + partIndex) and 0x7FFFFFFF
+                    val reqCodeDelivered = (reqCodeSent + 100_000) and 0x7FFFFFFF
+
+                    val sentIntent = Intent(context, SmsStatusReceiver::class.java).apply {
+                        action = "com.siddesh.smsalerts.SMS_SENT"
+                        putExtra("incident", id)
+                        putExtra("phone", cleanPhone)
+                        putExtra("part", partIndex)
+                        putExtra("total", totalParts)
+                    }
+
+                    val deliveryIntent = Intent(context, SmsStatusReceiver::class.java).apply {
+                        action = "com.siddesh.smsalerts.SMS_DELIVERED"
+                        putExtra("incident", id)
+                        putExtra("phone", cleanPhone)
+                        putExtra("part", partIndex)
+                        putExtra("total", totalParts)
+                    }
+
+                    val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    sentIntents.add(PendingIntent.getBroadcast(context, reqCodeSent, sentIntent, flags))
+                    deliveryIntents.add(PendingIntent.getBroadcast(context, reqCodeDelivered, deliveryIntent, flags))
+                }
+
+                if (totalParts > 1) {
                     smsManager.sendMultipartTextMessage(
                         cleanPhone,
                         null,
                         dividedParts,
-                        null,
-                        null
+                        sentIntents,
+                        deliveryIntents
                     )
                 } else {
                     smsManager.sendTextMessage(
                         cleanPhone,
                         null,
                         messageText,
-                        null,
-                        null
+                        sentIntents.firstOrNull(),
+                        deliveryIntents.firstOrNull()
                     )
+                }
+
+                if (incidentId != null) {
+                    outbox.submittedRecipient(incidentId, cleanPhone)
                 }
 
                 contactStatuses.add(
                     ContactSmsStatus(
                         contactName = contact.name,
                         phoneNumber = contact.phoneNumber,
-                        status = "SMS Transmitted",
+                        status = "SUBMITTED",
                         isSuccess = true
                     )
                 )
                 successCount++
+                Log.d(TAG, "Native SMS submitted to SmsManager (parts=$totalParts)")
             } catch (e: SecurityException) {
+                if (incidentId != null) {
+                    outbox.updateRecipientStatus(incidentId, cleanPhone, "SECURITY_EXCEPTION")
+                }
+                Log.e(TAG, "SecurityException sending SMS: ${e.message}")
                 contactStatuses.add(
                     ContactSmsStatus(
                         contactName = contact.name,
@@ -170,6 +277,10 @@ class SmsSender(private val context: Context) {
                     )
                 )
             } catch (e: Exception) {
+                if (incidentId != null) {
+                    outbox.updateRecipientStatus(incidentId, cleanPhone, "SEND_FAILED")
+                }
+                Log.e(TAG, "Exception sending SMS: ${e.message}")
                 contactStatuses.add(
                     ContactSmsStatus(
                         contactName = contact.name,
@@ -183,9 +294,14 @@ class SmsSender(private val context: Context) {
         }
 
         val overallStatus = when {
-            successCount == contacts.size && contacts.isNotEmpty() -> "Sent"
-            successCount > 0 -> "Partially Sent"
-            else -> "Failed"
+            successCount == contacts.size && contacts.isNotEmpty() -> "SENT_TO_CARRIER"
+            successCount > 0 -> "PARTIALLY_SENT"
+            contacts.isEmpty() -> "NO_RECIPIENTS"
+            else -> "FAILED"
+        }
+
+        if (incidentId != null) {
+            outbox.updateTransportStatus(incidentId, "SMS", overallStatus)
         }
 
         return SmsDispatchResult(

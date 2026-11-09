@@ -59,6 +59,17 @@ import com.siddesh.smsalerts.ui.theme.TextSecondary
 import com.siddesh.smsalerts.ui.viewmodel.HistoryViewModel
 import com.siddesh.smsalerts.utils.DateUtils
 
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
@@ -67,12 +78,29 @@ fun HistoryScreen(
 ) {
     val alerts by viewModel.alerts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val status by viewModel.status.collectAsState()
+    var alertToDelete by remember { mutableStateOf<EmergencyAlert?>(null) }
+    var showClearAllDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
+            Column {
             SafeAlertTopBar(
-                title = "Alert History"
+                title = "Alert History",
+                actions = {
+                    if (alerts.isNotEmpty()) {
+                        IconButton(onClick = { showClearAllDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteSweep,
+                                contentDescription = "Clear History",
+                                tint = TextSecondary
+                            )
+                        }
+                    }
+                }
             )
+            if (status.isNotBlank()) Text(status, color = TextSecondary, modifier = Modifier.padding(12.dp))
+            }
         },
         containerColor = BackgroundDark,
         modifier = modifier
@@ -142,19 +170,97 @@ fun HistoryScreen(
                     items(alerts, key = { it.alertId }) { alert ->
                         AlertHistoryItem(
                             alert = alert,
-                            onClick = { onAlertClick(alert.alertId) }
+                            onClick = { onAlertClick(alert.alertId) },
+                            onDelete = { alertToDelete = alert }
                         )
                     }
                 }
             }
         }
     }
+
+    // Confirm Single Alert Deletion Dialog
+    alertToDelete?.let { alert ->
+        AlertDialog(
+            onDismissRequest = { alertToDelete = null },
+            title = {
+                Text(
+                    text = "Delete Emergency Record?",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Permanently delete your ended incident, its shared summary and saved locations? This cannot be undone or recall copies already received. An opaque ID and deletion time remain to prevent delayed uploads from restoring it. Active incidents must be resolved first.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteAlert(alert.alertId)
+                        alertToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed)
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { alertToDelete = null }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = SurfaceCardElevated
+        )
+    }
+
+    // Confirm Clear All Dialog
+    if (showClearAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearAllDialog = false },
+            title = {
+                Text(
+                    text = "Clear All Alert History?",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Permanently delete the ended incidents shown for this account, including their shared summaries and saved locations? Active emergencies remain. This cannot be undone or recall received copies. Opaque deletion IDs and times remain to prevent delayed uploads from restoring them.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearHistory()
+                        showClearAllDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed)
+                ) {
+                    Text("Clear All", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = SurfaceCardElevated
+        )
+    }
 }
 
 @Composable
 fun AlertHistoryItem(
     alert: EmergencyAlert,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDelete: () -> Unit = {}
 ) {
     val isSuccess = alert.status.contains("sent", ignoreCase = true) || alert.status.contains("dispatched", ignoreCase = true)
     val isFailed = alert.status.contains("fail", ignoreCase = true) || alert.status.contains("error", ignoreCase = true)
@@ -291,7 +397,7 @@ fun AlertHistoryItem(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Footer Row: Location indicator & View Details action
+            // Footer Row: Location indicator & View Details / Delete action
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -323,21 +429,38 @@ fun AlertHistoryItem(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable(onClick = onClick)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "View Details",
-                        color = EmergencyRed,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "View Details",
-                        tint = EmergencyRed,
-                        modifier = Modifier.size(14.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable(onClick = onClick)
+                    ) {
+                        Text(
+                            text = "View Details",
+                            color = EmergencyRed,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "View Details",
+                            tint = EmergencyRed,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Alert",
+                            tint = TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

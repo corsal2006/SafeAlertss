@@ -17,13 +17,25 @@ data class EmergencyIncident(
     val triggerSource: String = "MANUAL_BUTTON", // MANUAL_BUTTON, TIMER_EXPIRY, WOMENS_SAFETY_TIMEOUT, SHAKE, VOICE
     val emergencyType: String = "EMERGENCY",
     val creationTimestamp: Long = System.currentTimeMillis(),
-    val userId: String = "local_user",
+    val userId: String = "",
+    val senderName: String = "",
+    val senderPhone: String = "",
+    val policeNumber: String = "",
+    val helplineNumber: String = "",
+    val locationTimestamp: Long? = null,
+    val locationSource: String = "",
+    val locationCached: Boolean = false,
+    val countdownDeadlineWall: Long = 0,
+    val countdownDeadlineElapsed: Long = 0,
+    val countdownBootCount: Int = -1,
+    val countdownSeconds: Int = 5,
     val messageText: String = "",
     val latitude: Double? = null,
     val longitude: Double? = null,
     val accuracy: Float? = null,
     val mapsUrl: String? = null,
     val recipientPhoneNumbers: List<String> = emptyList(),
+    val restrictRecipients: Boolean = false,
     val recipientStatuses: Map<String, String> = emptyMap(), // phone -> "SENT", "DELIVERED", "FAILED", "PENDING"
     val transportStatuses: Map<String, String> = emptyMap(), // "SMS" -> "SENT", "BLE_MESH" -> "BROADCAST", "CLOUD" -> "SAVED"
     val retryCount: Int = 0,
@@ -34,6 +46,7 @@ data class EmergencyIncident(
     companion object {
         const val STATE_IDLE = "IDLE"
         const val STATE_TRIGGERED = "TRIGGERED"
+        const val STATE_COUNTDOWN = "COUNTDOWN"
         const val STATE_INCIDENT_CREATED = "INCIDENT_CREATED"
         const val STATE_DISPATCHING = "DISPATCHING"
         const val STATE_ACTIVE = "ACTIVE"
@@ -73,13 +86,25 @@ data class EmergencyIncident(
                     triggerSource = json.optString("triggerSource", "MANUAL_BUTTON"),
                     emergencyType = json.optString("emergencyType", "EMERGENCY"),
                     creationTimestamp = json.getLong("creationTimestamp"),
-                    userId = json.optString("userId", "local_user"),
+                    userId = json.optString("userId", ""),
+                    senderName = json.optString("senderName"),
+                    senderPhone = json.optString("senderPhone"),
+                    policeNumber = json.optString("policeNumber"),
+                    helplineNumber = json.optString("helplineNumber"),
+                    locationTimestamp = if (json.has("locationTimestamp")) json.getLong("locationTimestamp") else null,
+                    locationSource = json.optString("locationSource"),
+                    locationCached = json.optBoolean("locationCached"),
+                    countdownDeadlineWall = json.optLong("countdownDeadlineWall"),
+                    countdownDeadlineElapsed = json.optLong("countdownDeadlineElapsed"),
+                    countdownBootCount = json.optInt("countdownBootCount", -1),
+                    countdownSeconds = json.optInt("countdownSeconds", 5),
                     messageText = json.optString("messageText", ""),
                     latitude = if (json.has("latitude")) json.getDouble("latitude") else null,
                     longitude = if (json.has("longitude")) json.getDouble("longitude") else null,
                     accuracy = if (json.has("accuracy")) json.getDouble("accuracy").toFloat() else null,
                     mapsUrl = if (json.has("mapsUrl")) json.getString("mapsUrl") else null,
                     recipientPhoneNumbers = recipientsList,
+                    restrictRecipients = json.optBoolean("restrictRecipients", false),
                     recipientStatuses = recStatuses,
                     transportStatuses = transStatuses,
                     retryCount = json.optInt("retryCount", 0),
@@ -100,12 +125,24 @@ data class EmergencyIncident(
             put("emergencyType", emergencyType)
             put("creationTimestamp", creationTimestamp)
             put("userId", userId)
+            put("senderName", senderName)
+            put("senderPhone", senderPhone)
+            put("policeNumber", policeNumber)
+            put("helplineNumber", helplineNumber)
+            locationTimestamp?.let { put("locationTimestamp", it) }
+            put("locationSource", locationSource)
+            put("locationCached", locationCached)
+            put("countdownDeadlineWall", countdownDeadlineWall)
+            put("countdownDeadlineElapsed", countdownDeadlineElapsed)
+            put("countdownBootCount", countdownBootCount)
+            put("countdownSeconds", countdownSeconds)
             put("messageText", messageText)
             latitude?.let { put("latitude", it) }
             longitude?.let { put("longitude", it) }
             accuracy?.let { put("accuracy", it.toDouble()) }
             mapsUrl?.let { put("mapsUrl", it) }
             put("recipients", JSONArray(recipientPhoneNumbers))
+            put("restrictRecipients", restrictRecipients)
             put("recipientStatuses", JSONObject(recipientStatuses))
             put("transportStatuses", JSONObject(transportStatuses))
             put("retryCount", retryCount)

@@ -1,7 +1,57 @@
+
+import java.security.KeyStore
+import java.security.cert.X509Certificate
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
+}
+
+// Credentials stay on this machine or in the CI environment, never in the APK/repository.
+val releaseSigningProperties = Properties().apply {
+    rootProject.file("signing.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}
+val secretsProperties = Properties().apply {
+    rootProject.file("secrets.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}
+fun signingValue(name: String): String? = providers.environmentVariable(name).orNull
+    ?.takeIf { it.isNotBlank() } ?: releaseSigningProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+val releaseStorePath = signingValue("KEYSTORE_PATH")
+val releaseStorePassword = signingValue("KEYSTORE_PASSWORD")
+val releaseKeyAlias = signingValue("KEY_ALIAS")
+val releaseKeyPassword = signingValue("KEY_PASSWORD")
+val releaseSigningReady = listOf(releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { it != null }
+
+fun mapsApiKeyValue(): String = providers.environmentVariable("MAPS_API_KEY").orNull?.takeIf { it.isNotBlank() }
+    ?: localProperties.getProperty("MAPS_API_KEY")?.takeIf { it.isNotBlank() }
+    ?: secretsProperties.getProperty("MAPS_API_KEY")?.takeIf { it.isNotBlank() }
+    ?: "DEFAULT_API_KEY"
+val mapsApiKey = mapsApiKeyValue()
+
+tasks.register("verifyReleaseSigning") {
+    group = "verification"
+    description = "Validate the existing production key without displaying credentials."
+    doLast {
+        check(releaseSigningReady) {
+            "Release signing is not configured. Fill the ignored signing.properties file using signing.properties.example, or set the four KEYSTORE/KEY environment variables. Do not distribute an unsigned or debug APK."
+        }
+        val storeFile = rootProject.file(releaseStorePath!!)
+        check(storeFile.isFile) { "The configured release keystore does not exist." }
+        val keyStore = KeyStore.getInstance(storeFile, releaseStorePassword!!.toCharArray())
+        check(keyStore.isKeyEntry(releaseKeyAlias)) { "The release alias must identify a private key." }
+        check(keyStore.getKey(releaseKeyAlias, releaseKeyPassword!!.toCharArray()) != null) { "The signing key could not be opened." }
+        val certificate = keyStore.getCertificate(releaseKeyAlias) as X509Certificate
+        certificate.checkValidity()
+        check(!certificate.subjectX500Principal.name.contains("CN=Android Debug", ignoreCase = true)) {
+            "An Android debug certificate cannot be used as the production signing identity."
+        }
+        logger.lifecycle("Existing release key validated. No credentials were printed.")
+    }
 }
 
 android {
@@ -12,23 +62,57 @@ android {
         applicationId = "com.siddesh.smsalerts"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
+        buildConfigField("boolean", "IS_LOCAL_QA", "false")
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        testInstrumentationRunner = "com.siddesh.smsalerts.QaTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
     }
 
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("production") {
+                storeFile = rootProject.file(releaseStorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
+    testBuildType = "qa"
     buildTypes {
+        create("qa") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".qa"
+            matchingFallbacks += listOf("debug")
+            buildConfigField("boolean", "IS_LOCAL_QA", "true")
+        }
         release {
+            isDebuggable = false
+            isJniDebuggable = false
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("production")
+            // Preserve the tested reflection/serialization paths. Shrinking is optional,
+            // and is not a way to resolve a Play Protect classification.
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+    }
+
+    // A configured release must pass key validation before it can be packaged.
+    if (releaseSigningReady) {
+        tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn("verifyReleaseSigning") }
     }
 
     compileOptions {
@@ -42,6 +126,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -55,12 +140,17 @@ android {
     }
 
     lint {
-        abortOnError = false
+        abortOnError = true
         checkDependencies = true
     }
 }
 
 dependencies {
+    constraints {
+        implementation("com.google.protobuf:protobuf-javalite:3.25.5") {
+            because("Fix GHSA-735f-pc8j-v9w8 unknown-field recursion denial of service in the Firestore transitive runtime")
+        }
+    }
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
@@ -82,6 +172,9 @@ dependencies {
     // Location Service
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
+    // Google Maps SDK for Android & Maps Compose
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.maps.android:maps-compose:4.4.1")
     // Google Sign-In & Credential Manager
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("androidx.credentials:credentials:1.3.0")
@@ -96,6 +189,7 @@ dependencies {
     implementation(firebaseBom)
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
@@ -114,6 +208,7 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

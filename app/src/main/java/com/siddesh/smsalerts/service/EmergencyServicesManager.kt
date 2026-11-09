@@ -3,8 +3,7 @@ package com.siddesh.smsalerts.service
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
-import androidx.core.content.ContextCompat
+import com.siddesh.smsalerts.utils.PrivacyLog as Log
 import com.siddesh.smsalerts.data.model.UserProfile
 import com.siddesh.smsalerts.data.preferences.AppUserPreferences
 
@@ -31,8 +30,7 @@ data class EmergencyCallResult(
 class EmergencyServicesManager(private val context: Context) {
 
     /**
-     * Creates an authorized dial intent or direct call if permission is granted.
-     * Prevents blind background calls by utilizing user confirmation.
+     * Opens the dialer so the user confirms every emergency call with the phone app.
      */
     fun initiateEmergencyCall(
         serviceName: String,
@@ -49,29 +47,15 @@ class EmergencyServicesManager(private val context: Context) {
         }
 
         try {
-            val hasCallPermission = ContextCompat.checkSelfPermission(
-                context,
-                android.Manifest.permission.CALL_PHONE
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-            val intent = if (hasCallPermission) {
-                Intent(Intent.ACTION_CALL, Uri.parse("tel:$sanitized")).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-            } else {
-                Intent(Intent.ACTION_DIAL, Uri.parse("tel:$sanitized")).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-            }
-
+            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$sanitized")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            Log.i(TAG, "EMERGENCY_CALL_DISPATCHED: service=$serviceName, number=$sanitized, direct=$hasCallPermission")
+            Log.i(TAG, "EMERGENCY_DIALER_OPENED")
 
             return EmergencyCallResult(
-                status = if (hasCallPermission) CallDispatchStatus.INITIATED else CallDispatchStatus.DIALER_OPENED,
+                status = CallDispatchStatus.DIALER_OPENED,
                 targetNumber = sanitized,
                 targetName = serviceName,
-                message = if (hasCallPermission) "Emergency call initiated to $serviceName ($sanitized)." else "Phone dialer opened with $serviceName ($sanitized)."
+                message = "Phone dialer opened with $serviceName ($sanitized). Confirm the call in your phone app."
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch call intent: ${e.message}")
@@ -128,7 +112,7 @@ class EmergencyServicesManager(private val context: Context) {
         latitude: Double?,
         longitude: Double?
     ): String {
-        val name = userProfile?.fullName?.ifBlank { userProfile.name } ?: "SafeAlert User"
+        val name = userProfile?.fullName?.ifBlank { userProfile.name } ?: ""
         val locationStr = if (latitude != null && longitude != null) {
             "https://maps.google.com/?q=$latitude,$longitude"
         } else "Location unavailable"

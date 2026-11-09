@@ -1,6 +1,6 @@
 package com.siddesh.smsalerts.data.repository
 
-import android.util.Log
+import com.siddesh.smsalerts.utils.PrivacyLog as Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
@@ -45,6 +45,7 @@ class ContactsRepository {
             .orderBy("createdAt", Query.Direction.ASCENDING)
 
         val primaryListener = primaryRef.addSnapshotListener { snapshot, error ->
+            if (auth.currentUser?.uid != userId) return@addSnapshotListener
             if (error != null) {
                 Log.w(TAG, "Primary trustedContacts listener error: ${error.message} (code=${error.code})")
                 val fallbackList = LocalContactsCache.getContacts()
@@ -58,14 +59,17 @@ class ContactsRepository {
             } ?: emptyList()
 
             if (primaryList.isNotEmpty()) {
+                LocalContactsCache.markPrimaryUsed()
+                emergencyContactsListener?.remove(); emergencyContactsListener = null
                 LocalContactsCache.saveContacts(primaryList)
                 trySend(primaryList)
-            } else if (error == null) {
+            } else if (error == null && snapshot?.metadata?.isFromCache == false) {
+                LocalContactsCache.saveContacts(primaryList)
                 trySend(primaryList)
             }
 
             // If primary is empty or permission denied, listen to legacy emergencyContacts as fallback
-            if (primaryList.isEmpty() && emergencyContactsListener == null) {
+            if (primaryList.isEmpty() && error == null && snapshot?.metadata?.isFromCache == false && !LocalContactsCache.hasUsedPrimary() && emergencyContactsListener == null) {
                 val legacyRef = firestore.collection("users")
                     .document(userId)
                     .collection("emergencyContacts")
@@ -79,7 +83,12 @@ class ContactsRepository {
                     val legacyList = legSnapshot?.documents?.mapNotNull { doc ->
                         mapDocumentToContact(doc)
                     } ?: emptyList()
+                    if (auth.currentUser?.uid != userId || LocalContactsCache.hasUsedPrimary()) return@addSnapshotListener
                     if (legacyList.isNotEmpty()) {
+                        // Import once into the canonical collection; legacy mirrors cannot restore deleted contacts.
+                        val batch = firestore.batch()
+                        legacyList.forEach { contact -> batch.set(firestore.collection("users").document(userId).collection("trustedContacts").document(contact.id), contact.toMap()) }
+                        batch.commit()
                         Log.d(TAG, "Loaded ${legacyList.size} contacts from legacy emergencyContacts collection")
                         LocalContactsCache.saveContacts(legacyList)
                         trySend(legacyList)
@@ -197,6 +206,8 @@ class ContactsRepository {
         val authenticatedUid = currentUser.uid
         val updated = contact.copy(updatedAt = System.currentTimeMillis())
         val data = updated.toMap()
+        LocalContactsCache.markPrimaryUsed()
+        LocalContactsCache.addOrUpdateContact(updated)
 
         return try {
             firestore.collection("users")
@@ -237,6 +248,8 @@ class ContactsRepository {
             return Resource.Error("AUTH_REQUIRED: Please sign in before deleting contacts.")
         }
         val authenticatedUid = currentUser.uid
+        LocalContactsCache.markPrimaryUsed()
+        LocalContactsCache.removeContact(contactId)
 
         return try {
             firestore.collection("users")

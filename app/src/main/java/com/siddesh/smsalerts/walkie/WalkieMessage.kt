@@ -13,7 +13,10 @@ data class WalkieTextMessage(
     val text: String,
     val timestamp: Long = System.currentTimeMillis(),
     val isOutgoing: Boolean = false,
-    val deliveryStatus: String = "SENT" // PENDING, SENT, RELAYED, DELIVERED, FAILED
+    val deliveryStatus: String = "QUEUED",
+    val deleteRequestId: String? = null,
+    val pendingPacketJson: String? = null,
+    val deletedForBoth: Boolean = false
 )
 
 enum class WalkieState {

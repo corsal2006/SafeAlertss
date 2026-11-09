@@ -15,13 +15,15 @@ data class TrustedCircleMember(
     val lastAccuracyMeters: Float? = null,
     val lastLocationTimestamp: Long = 0L,
     val sharingDurationHours: Int = 24,
-    val isBlocked: Boolean = false
+    val isBlocked: Boolean = false,
+    val activeIncidentId: String? = null,
+    val photoUrl: String? = null
 ) {
     val isLocationStale: Boolean
         get() {
             if (lastLocationTimestamp == 0L) return true
             val ageMs = System.currentTimeMillis() - lastLocationTimestamp
-            return ageMs > 15 * 60 * 1000L // Stale if older than 15 minutes
+            return ageMs !in 0..60_000L // Future timestamps are not fresh fixes either.
         }
 
     fun toJson(): String {
@@ -65,3 +67,13 @@ data class TrustedCircleMember(
         }
     }
 }
+
+data class CircleInvitation(
+    val id: String = UUID.randomUUID().toString(),
+    val senderUid: String = "",
+    val senderName: String = "",
+    val senderPhone: String = "",
+    val status: String = "PENDING", // PENDING, ACCEPTED, REJECTED, REVOKED
+    val timestamp: Long = System.currentTimeMillis(),
+    val shareMyLiveLocation: Boolean = false
+)

@@ -6,6 +6,7 @@ import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Warning
@@ -90,6 +92,7 @@ fun SettingsScreen(
     onNavigateToEmergencyTriggers: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
+    onUserManual: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -187,7 +190,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "Safe Alerts uses a foreground service while protection is enabled. Android may stop monitoring after a user-forced stop.",
+                        text = "SafeAlerts uses a foreground service while protection is enabled. Android may stop monitoring after a user-forced stop.",
                         color = TextMuted,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
@@ -318,6 +321,84 @@ fun SettingsScreen(
                 }
             }
 
+            // 2b. Emergency Numbers & Helplines (112, 108, 101, 1091)
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onNavigateToEmergencyTriggers
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Emergency Services & Numbers",
+                                    color = TextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Configure and verify numbers for your region",
+                                    color = TextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted)
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = CardBorder.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            Triple("Call Police", preferences.policeNumber, Color(0xFF38BDF8)),
+                            Triple("Call Medical", preferences.ambulanceNumber, Color(0xFF10B981)),
+                            Triple("Call Fire", preferences.fireNumber, Color(0xFFF59E0B)),
+                            Triple("Call Women", preferences.womensHelplineNumber, Color(0xFFEC4899))
+                        ).forEach { (label, number, accent) ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(accent.copy(alpha = 0.12f))
+                                    .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                                    .clickable(enabled = number.isNotBlank()) {
+                                        val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number"))
+                                        context.startActivity(dialIntent)
+                                    }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = label.split(" ")[0],
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = accent
+                                    )
+                                    Text(
+                                        text = label.split(" ")[1],
+                                        fontSize = 10.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // 3. Trusted Contacts Shortcut
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -369,7 +450,7 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = "Includes live Google Maps coordinate link in SMS",
+                                    text = "Includes your actual GPS fix in authorized emergency alerts",
                                     color = TextSecondary,
                                     fontSize = 12.sp
                                 )
@@ -449,7 +530,7 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Sends SMS directly in background when permission is granted",
+                                text = "Sends automatic emergency SMS alerts via cellular network to your trusted contacts using Android SmsManager.",
                                 color = TextSecondary,
                                 fontSize = 12.sp
                             )
@@ -457,6 +538,7 @@ fun SettingsScreen(
 
                         Switch(
                             checked = preferences.directSmsEnabled,
+                            enabled = true,
                             onCheckedChange = { enabled ->
                                 scope.launch { preferencesDataStore.updateDirectSms(enabled) }
                             },
@@ -582,8 +664,8 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     SettingsPermissionRow(
-                        title = "SMS Dispatch Permission (SEND_SMS)",
-                        description = "Direct cellular transmission of alerts",
+                        title = "Automatic carrier SMS (SEND_SMS)",
+                        description = "Required for sending direct emergency alerts via cellular carrier",
                         isGranted = hasSmsPermission
                     )
 
@@ -599,6 +681,7 @@ fun SettingsScreen(
                 }
             }
 
+            OutlinedButton(onClick = onUserManual, modifier = Modifier.fillMaxWidth()) { Text("User Manual") }
             // 7. Privacy & About Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -638,7 +721,7 @@ fun SettingsScreen(
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("SIGN OUT OF SAFEALERT", fontWeight = FontWeight.Bold)
+                Text("SIGN OUT OF SafeAlerts", fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(88.dp))
@@ -703,11 +786,13 @@ fun SettingsScreen(
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Text(
-                        text = "SafeAlert is designed with strict security and privacy standards:\n\n" +
-                                "1. Zero Third-Party Advertising: No advertising SDKs, tracking pixels, or monetized telemetry.\n\n" +
-                                "2. Strict Firestore Isolation: All data is partitioned under your authenticated Firebase UID (users/{uid}/). Security rules enforce that only you can read or write your contacts and history.\n\n" +
-                                "3. GPS Coordinates: Your location is queried ONLY when you deliberate trigger an emergency alert or request a safety check-in. It is never tracked continuously in the background.\n\n" +
-                                "4. Direct Carrier SMS: SMS dispatches go directly through your cellular carrier via Android telephony APIs without routing through intermediary servers.",
+                        text = "Choose which safety features and permissions to enable. SafeAlerts does not include advertising SDKs.\n\n" +
+                                "Emergency SMS: With SMS permission, alerts use your SIM to contact the emergency contacts you saved. Alerts may be triggered by SOS or by a shake, voice phrase or expired safety timer you enabled. Messages can include your emergency profile and location when enabled. Carrier charges may apply. SafeAlerts does not read your SMS inbox or call history.\n\n" +
+                                "Live location: An active SOS, journey or Trusted Circle sharing session can keep collecting and sharing location while the app is in the background, with a visible service notification. Updates target 15 seconds; Android may delay them. Cloud location is available to accepted members with an active sharing grant. Stop the session or turn off sharing to end updates.\n\n" +
+                                "Account and contacts: Firebase stores your account, private profile and saved emergency contacts. Selected recipients receive the emergency information you share. Public profile information is limited to your name and photo. Group messages are available to group members; keep invite codes and offline group keys private.\n\n" +
+                                "Microphone: Voice recognition listens on Home or during a speech test after you enable it and grant permission. On-device recognition is preferred; when unavailable, your phone's speech provider may send audio to its servers. SafeAlerts does not save raw microphone recordings.\n\n" +
+                                "Maps and Bluetooth: Map images are requested from OpenStreetMap, which receives your network address and requested map area. Nearby sharing uses Bluetooth with your permission and a private group key.\n\n" +
+                                "Your controls: Revoke permissions in Android settings, disable triggers, stop sharing, remove saved contacts, or confirm deletion of your resolved/cancelled incidents in History. Copies already delivered by SMS or to another device cannot be recalled.",
                         fontSize = 13.sp,
                         color = TextSecondary,
                         lineHeight = 18.sp

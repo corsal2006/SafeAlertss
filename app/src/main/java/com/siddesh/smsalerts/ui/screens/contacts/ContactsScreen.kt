@@ -136,7 +136,7 @@ fun ContactsScreen(
                         color = TextPrimary
                     )
                     Text(
-                        text = "These contacts receive your GPS position and alert via SMS.",
+                        text = "Saved emergency contacts receive automatic SMS alerts with your location when an emergency is confirmed.",
                         fontSize = 13.sp,
                         color = TextSecondary,
                         lineHeight = 18.sp
@@ -493,7 +493,7 @@ private fun EmptyContactsView(onAddContactClick: () -> Unit) {
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "SafeAlert requires at least one verified emergency contact to broadcast SMS notifications.",
+            text = "Save people you trust for manual contact. Internet alerts use accepted Trusted Circle sharing grants.",
             fontSize = 13.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center,

@@ -66,22 +66,7 @@ class EmergencyOrchestrationUnitTest {
         val defaultPhrases = VoiceEmergencyDetector.DEFAULT_EMERGENCY_PHRASES
         val customPhrases = listOf("CODE RED", "MAYDAY", "SAFEALERT SOS")
 
-        fun matchSpoken(spokenText: String, phrases: List<String>): String? {
-            val normalized = spokenText.trim().uppercase(Locale.getDefault())
-            val cleaned = normalized.replace(Regex("[^A-Z0-9 ]"), " ").trim()
-            val tokens = cleaned.split("\\s+".toRegex())
-
-            val sorted = phrases.sortedByDescending { it.length }
-            for (phrase in sorted) {
-                val phraseTokens = phrase.split(" ")
-                if (phraseTokens.size == 1) {
-                    if (tokens.contains(phrase)) return phrase
-                } else {
-                    if (cleaned.contains(phrase)) return phrase
-                }
-            }
-            return null
-        }
+        fun matchSpoken(spokenText: String, phrases: List<String>) = VoiceEmergencyDetector.matchPhrase(spokenText, phrases)
 
         val allPhrases = defaultPhrases + customPhrases
 
@@ -91,8 +76,8 @@ class EmergencyOrchestrationUnitTest {
         assertEquals("SAFEALERT SOS", matchSpoken("safealert sos right now", allPhrases))
 
         // Punctuation and casing normalization
-        assertEquals("HELP", matchSpoken("help... please!", allPhrases))
-        assertEquals("I NEED HELP", matchSpoken("I NEED HELP!", allPhrases))
+        assertNull(matchSpoken("help... please!", allPhrases))
+        assertEquals("HELP ME", matchSpoken("Please HELP ME!", allPhrases))
 
         // Negative tests
         assertNull(matchSpoken("Just calling to say hello", allPhrases))

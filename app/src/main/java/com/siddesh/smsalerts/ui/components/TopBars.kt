@@ -25,6 +25,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -56,7 +58,8 @@ fun SafeAlertMainTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(48.dp)
+                        .clickable(onClickLabel = "About SafeAlerts", onClick = onNotificationsClick)
                         .clip(RoundedCornerShape(10.dp))
                         .background(EmergencyRed.copy(alpha = 0.15f))
                         .border(1.dp, EmergencyRed.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
@@ -64,7 +67,7 @@ fun SafeAlertMainTopBar(
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_app_logo),
-                        contentDescription = "SafeAlert Logo",
+                        contentDescription = "SafeAlerts Logo",
                         tint = Color.Unspecified,
                         modifier = Modifier.size(24.dp)
                     )
@@ -72,21 +75,16 @@ fun SafeAlertMainTopBar(
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "SMS Emergency",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Alert",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = EmergencyRed
-                    )
-                }
+                Text(
+                    text = androidx.compose.ui.text.buildAnnotatedString {
+                        append("Personal Emergency ")
+                        pushStyle(androidx.compose.ui.text.SpanStyle(color = EmergencyRed))
+                        append("Alert")
+                        pop()
+                    },
+                    fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary,
+                    maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
         },
         actions = {
@@ -103,11 +101,12 @@ fun SafeAlertMainTopBar(
             Box(
                 modifier = Modifier
                     .padding(end = 12.dp)
-                    .size(36.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(SurfaceCard)
                     .border(1.5.dp, EmergencyRed, CircleShape)
-                    .clickable { onProfileClick() },
+                    .clickable(onClickLabel = "Open profile") { onProfileClick() }
+                    .semantics { contentDescription = "Open profile" },
                 contentAlignment = Alignment.Center
             ) {
                 if (!userProfile?.photoUrl.isNullOrBlank()) {
@@ -146,6 +145,7 @@ fun SafeAlertTopBar(
     title: String,
     showBackButton: Boolean = false,
     onBackClick: () -> Unit = {},
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -169,6 +169,7 @@ fun SafeAlertTopBar(
                 }
             }
         },
+        actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = BackgroundDark,
             titleContentColor = TextPrimary

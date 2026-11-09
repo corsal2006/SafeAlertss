@@ -3,10 +3,10 @@
 
     <!-- Emergency SMS Permissions -->
     <uses-permission android:name="android.permission.SEND_SMS" />
-
     <!-- GPS & Location Permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- Network & Firebase Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -25,7 +25,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- Voice Emergency Trigger & Walkie-Talkie -->
+    <!-- Foreground voice emergency trigger and user-started speech test -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Offline Bluetooth Mesh & Walkie-Talkie -->
@@ -41,8 +41,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- Emergency Calling Workflow -->
-    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <!-- Haptic Feedback & WakeLock for Background Detection -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -62,14 +60,22 @@
         android:name="android.hardware.microphone"
         android:required="false" />
 
+    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>
+
     <application
         android:name=".SafeAlertApp"
         android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.SafeAlert">
+
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
 
         <activity
             android:name=".MainActivity"
@@ -107,6 +113,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.siddesh.smsalerts.ACTION_CHECK_IN_EXPIRED" />
+                <action android:name="com.siddesh.smsalerts.ACTION_CHECK_IN_FINAL_EXPIRY" />
                 <action android:name="com.siddesh.smsalerts.ACTION_IM_SAFE" />
             </intent-filter>
         </receiver>
@@ -116,6 +123,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.siddesh.smsalerts.ACTION_WOMENS_SAFETY_EXPIRED" />
+                <action android:name="com.siddesh.smsalerts.ACTION_WOMENS_SAFETY_FINAL_EXPIRY" />
                 <action android:name="com.siddesh.smsalerts.ACTION_WOMENS_SAFETY_ARRIVED" />
             </intent-filter>
         </receiver>
@@ -123,18 +131,30 @@
         <receiver
             android:name=".service.BootReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".data.sms.SmsStatusReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.siddesh.smsalerts.SMS_SENT" />
+                <action android:name="com.siddesh.smsalerts.SMS_DELIVERED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".service.EmergencyCountdownReceiver" android:exported="false" />
+
+        <service android:name=".service.EmergencyMessagingService" android:exported="false"><intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter></service>
+
         <service
             android:name=".service.EmergencyProtectionService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse|connectedDevice">
+            android:foregroundServiceType="specialUse|connectedDevice|location">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Emergency shake detection and safety monitoring" />

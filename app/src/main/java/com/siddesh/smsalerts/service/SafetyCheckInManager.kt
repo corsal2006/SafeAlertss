@@ -5,7 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
+import com.siddesh.smsalerts.utils.PrivacyLog as Log
 import com.siddesh.smsalerts.data.preferences.UserPreferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 private const val TAG = "SafeAlerts/CheckInMgr"
 
@@ -26,7 +27,9 @@ data class SafetyCheckInState(
     val isGracePeriodActive: Boolean = false,
     val graceRemainingSeconds: Long = 0L,
     val isPaused: Boolean = false,
-    val escalationPolicy: String = "AUTO_EMERGENCY"
+    val escalationPolicy: String = "AUTO_EMERGENCY",
+    val isEscalated: Boolean = false,
+    val escalatedIncidentId: String = ""
 )
 
 /**
@@ -38,7 +41,13 @@ class SafetyCheckInManager(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
     private val preferences = UserPreferencesDataStore(context)
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val _operationError = MutableStateFlow("")
+    val operationError = _operationError.asStateFlow()
+    private val scope = CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO +
+        kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+            Log.e(TAG, "Check-In persistence or scheduling failed", error)
+            _operationError.value = "Check-In change could not be completed. Check device storage and verify the saved deadline before relying on it."
+        })
 
     private val _checkInState = MutableStateFlow(SafetyCheckInState())
     val checkInState: StateFlow<SafetyCheckInState> = _checkInState.asStateFlow()
@@ -68,7 +77,9 @@ class SafetyCheckInManager(private val context: Context) {
                         isGracePeriodActive = prefs.safetyCheckInGracePeriodActive,
                         graceRemainingSeconds = graceRemaining,
                         isPaused = prefs.safetyCheckInPaused,
-                        escalationPolicy = prefs.safetyCheckInEscalationPolicy
+                        escalationPolicy = prefs.safetyCheckInEscalationPolicy,
+                        isEscalated = false,
+                        escalatedIncidentId = ""
                     )
                 } else {
                     _checkInState.value = SafetyCheckInState(
@@ -81,7 +92,9 @@ class SafetyCheckInManager(private val context: Context) {
                         isGracePeriodActive = false,
                         graceRemainingSeconds = 0L,
                         isPaused = false,
-                        escalationPolicy = prefs.safetyCheckInEscalationPolicy
+                        escalationPolicy = prefs.safetyCheckInEscalationPolicy,
+                        isEscalated = prefs.safetyCheckInEscalated,
+                        escalatedIncidentId = prefs.safetyCheckInIncidentId
                     )
                 }
             }
@@ -98,9 +111,10 @@ class SafetyCheckInManager(private val context: Context) {
 
         scope.launch {
             preferences.startSafetyCheckIn(durationMinutes, targetMillis, graceMinutes, escalationPolicy)
+            SafetyTimerWork.schedule(context, SafetyTimerWork.CHECK_IN, preferences.preferencesFlow.first())
         }
 
-        scheduleAlarm(targetMillis, SafetyCheckInReceiver.ACTION_CHECK_IN_EXPIRED, 101)
+
     }
 
     fun pauseCheckIn() {
@@ -124,9 +138,10 @@ class SafetyCheckInManager(private val context: Context) {
 
         scope.launch {
             preferences.resumeSafetyCheckIn(newTargetMillis)
+            SafetyTimerWork.schedule(context, SafetyTimerWork.CHECK_IN, preferences.preferencesFlow.first())
         }
 
-        scheduleAlarm(newTargetMillis, SafetyCheckInReceiver.ACTION_CHECK_IN_EXPIRED, 101)
+
     }
 
     fun markSafeOrCancel() {
@@ -139,6 +154,14 @@ class SafetyCheckInManager(private val context: Context) {
 
         scope.launch {
             preferences.cancelOrCompleteSafetyCheckIn()
+        }
+    }
+
+    fun resolveEscalatedCheckIn() {
+        Log.i(TAG, "Resolving escalated emergency check-in")
+        EmergencyManager.getInstance(context).resolveEmergency(_checkInState.value.escalatedIncidentId)
+        scope.launch {
+            preferences.clearSafetyCheckInEscalation()
         }
     }
 
@@ -155,40 +178,14 @@ class SafetyCheckInManager(private val context: Context) {
                 ((graceTarget - now) / 1000).coerceAtLeast(0)
             } else 0L
 
+            val isExpiredNow = remaining == 0L
             _checkInState.value = current.copy(
                 remainingSeconds = remaining,
-                isExpired = remaining == 0L,
+                isExpired = isExpiredNow,
                 graceRemainingSeconds = graceRemaining
             )
-        }
-    }
 
-    private fun scheduleAlarm(triggerMillis: Long, action: String, requestCode: Int) {
-        val intent = Intent(context, SafetyCheckInReceiver::class.java).apply {
-            this.action = action
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
-        alarmManager?.let { am ->
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (am.canScheduleExactAlarms()) {
-                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
-                    } else {
-                        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
-                    }
-                } else {
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Exact alarm permission fallback: ${e.message}")
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerMillis, pendingIntent)
-            }
         }
     }
 

@@ -1,6 +1,6 @@
 package com.siddesh.smsalerts.data.repository
 
-import android.util.Log
+import com.siddesh.smsalerts.utils.PrivacyLog as Log
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.FirebaseAuth

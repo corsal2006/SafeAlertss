@@ -1,5 +1,7 @@
 # SafeAlerts — Release Blockers & Production Readiness Gates
 
+**Historical assessment:** The verified current Play Protect/release status is in [PLAY_PROTECT_REVIEW_20261024.md](PLAY_PROTECT_REVIEW_20261024.md). Earlier PASS/production-readiness claims below are not a malware certification or a substitute for that report. Release signing is currently blocked by unavailable existing keystore credentials. R8 minification is optional, not a Google Play or Play Protect acceptance requirement.
+
 **Assessment Date:** October 2026  
 **Application ID:** `com.siddesh.smsalerts`  
 **Evaluation Scope:** Production Engineering, Application Security, Performance Scalability, and Release Compliance.

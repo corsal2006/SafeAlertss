@@ -1,6 +1,6 @@
 package com.siddesh.smsalerts.data.repository
 
-import android.util.Log
+import com.siddesh.smsalerts.utils.PrivacyLog as Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.userProfileChangeRequest
@@ -78,10 +78,11 @@ class UserRepository(
         detachListener()
 
         // 1. Immediately provide cached in-memory profile from FirebaseUser so UI never flashes "User" or "Guest"
-        val initialName = user.displayName?.takeIf { it.isNotBlank() } ?: "User"
+        val initialName = user.displayName?.takeIf { it.isNotBlank() } ?: ""
         if (_userProfile.value == null || _userProfile.value?.uid != user.uid) {
             _userProfile.value = UserProfile(
                 uid = user.uid,
+                isLoaded = false,
                 name = initialName,
                 fullName = initialName,
                 email = user.email.orEmpty(),
@@ -100,11 +101,12 @@ class UserRepository(
                     return@addSnapshotListener
                 }
 
+                if (auth.currentUser?.uid != user.uid) return@addSnapshotListener
                 if (snapshot != null && snapshot.exists()) {
                     val fullName = snapshot.getString("fullName")
                         ?: snapshot.getString("name")
                         ?: user.displayName
-                        ?: "User"
+                        ?: ""
                     val email = snapshot.getString("email") ?: user.email.orEmpty()
                     val phone = snapshot.getString("phoneNumber") ?: user.phoneNumber.orEmpty()
                     val photo = snapshot.getString("photoUrl") ?: user.photoUrl?.toString()
@@ -120,20 +122,29 @@ class UserRepository(
                         fullName = fullName,
                         email = email,
                         phoneNumber = phone,
+                        dateOfBirth = snapshot.getString("dateOfBirth"),
+                        homeAddress = snapshot.getString("homeAddress").orEmpty(),
                         photoUrl = photo,
                         authProvider = provider,
                         provider = provider,
                         createdAt = createdAt,
                         updatedAt = updatedAt
                     )
-                    Log.d(TAG, "PROFILE_LOADED: name='$fullName', uid='${user.uid}'")
+                    Log.d(TAG, "Profile loaded")
                     _userProfile.value = profile
+                    val publicData = mutableMapOf<String, Any>("name" to fullName.take(100))
+                    if (photo != null) publicData["photoUrl"] = photo
+                    try {
+                        firestore.collection("public_profiles").document(user.uid).set(publicData, SetOptions.merge())
+                    } catch (e: Exception) {
+                        Log.w(TAG, "public_profiles update skipped: ${e.message}")
+                    }
                 } else if (snapshot != null && !snapshot.exists()) {
                     // Profile document does not exist yet; auto-create it from FirebaseUser
                     repositoryScope.launch {
                         syncProfile(
                             user = user,
-                            fallbackName = user.displayName.orEmpty().ifBlank { "User" },
+                            fallbackName = user.displayName.orEmpty().ifBlank { "" },
                             fallbackEmail = user.email.orEmpty(),
                             provider = if (user.providerData.any { it.providerId == "google.com" }) "google" else "email_password"
                         )
@@ -154,7 +165,7 @@ class UserRepository(
         val name = when {
             user.displayName?.isNotBlank() == true -> user.displayName!!.trim()
             fallbackName.isNotBlank() -> fallbackName.trim()
-            else -> "User"
+            else -> ""
         }
         val email = user.email?.takeIf { it.isNotBlank() } ?: fallbackEmail.trim()
         val photo = user.photoUrl?.toString()
@@ -162,6 +173,7 @@ class UserRepository(
 
         val profile = UserProfile(
             uid = user.uid,
+            isLoaded = false,
             name = name,
             fullName = name,
             email = email,
@@ -174,13 +186,15 @@ class UserRepository(
         )
 
         // Optimistically update memory so Home Screen sees it instantly
-        _userProfile.value = profile
+        if (_userProfile.value?.uid != user.uid || _userProfile.value?.isLoaded != true) _userProfile.value = profile
 
         // Persist to Firestore
         try {
             withTimeoutOrNull(5000L) {
                 val docRef = firestore.collection("users").document(user.uid)
-                docRef.set(profile.toMap(), SetOptions.merge()).await()
+                val existing = docRef.get().await()
+                if (!existing.exists()) docRef.set(profile.toMap()).await()
+                else docRef.set(mapOf("email" to email, "authProvider" to provider, "provider" to provider, "updatedAt" to System.currentTimeMillis()), SetOptions.merge()).await()
                 Log.d(TAG, "PROFILE_CREATED: Firestore document written for ${user.uid}")
             }
         } catch (e: Exception) {
@@ -190,26 +204,32 @@ class UserRepository(
         return profile
     }
 
-    suspend fun updateProfile(name: String, phoneNumber: String): Resource<Unit> {
+    suspend fun updateProfile(name: String, phoneNumber: String, dateOfBirth: String? = _userProfile.value?.dateOfBirth, homeAddress: String = _userProfile.value?.homeAddress.orEmpty()): Resource<Unit> {
         val user = auth.currentUser ?: return Resource.Error("User not signed in.")
         val trimmedName = name.trim()
         val trimmedPhone = phoneNumber.trim()
 
-        if (trimmedName.isBlank()) {
-            return Resource.Error("Name cannot be empty.")
+        if (trimmedName.isBlank() || trimmedName.length > 100) {
+            return Resource.Error("Enter a name of 1–100 characters.")
         }
 
+        if (!dateOfBirth.isNullOrBlank() && com.siddesh.smsalerts.utils.ProfileDates.age(dateOfBirth) == null) return Resource.Error("Choose a valid birth date that is not in the future.")
+        if (trimmedPhone.isNotBlank() && !Regex("\\+?[0-9 ()-]{7,20}").matches(trimmedPhone)) return Resource.Error("Enter a valid phone number.")
         return try {
             val updates = mapOf(
                 "fullName" to trimmedName,
                 "name" to trimmedName,
                 "phoneNumber" to trimmedPhone,
+                "dateOfBirth" to dateOfBirth?.takeIf { it.isNotBlank() },
+                "homeAddress" to homeAddress.trim(),
                 "updatedAt" to System.currentTimeMillis()
             )
 
-            withTimeoutOrNull(5000L) {
+            val saved = withTimeoutOrNull(5000L) {
                 firestore.collection("users").document(user.uid).set(updates, SetOptions.merge()).await()
-            }
+                true
+            } ?: false
+            if (!saved) return Resource.Error("Saved locally; server confirmation is pending. Reconnect and check your profile.")
 
             try {
                 user.updateProfile(userProfileChangeRequest {
@@ -223,9 +243,12 @@ class UserRepository(
                 name = trimmedName,
                 fullName = trimmedName,
                 phoneNumber = trimmedPhone,
+                dateOfBirth = dateOfBirth,
+                homeAddress = homeAddress.trim(),
                 updatedAt = System.currentTimeMillis()
             )
 
+            firestore.collection("public_profiles").document(user.uid).set(mapOf("name" to trimmedName.take(100), "photoUrl" to user.photoUrl?.toString()))
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update profile: ${e.message}", e)

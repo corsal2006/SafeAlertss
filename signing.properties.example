@@ -1,0 +1,7 @@
+# Copy to signing.properties (ignored by Git). Edit locally; do not send passwords in chat.
+# Reuse your existing production key. A new key can break updates and Google sign-in.
+# Use forward slashes for absolute Windows paths, or a path relative to this repository.
+KEYSTORE_PATH=safealerts-release.jks
+KEYSTORE_PASSWORD=
+KEY_ALIAS=
+KEY_PASSWORD=

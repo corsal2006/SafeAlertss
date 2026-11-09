@@ -12,6 +12,51 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 /**
+ * Feature-level descriptor for centralized permission handling.
+ */
+enum class AppPermissionFeature(
+    val title: String,
+    val rationale: String,
+    val limitation: String
+) {
+    LOCATION(
+        title = "Location Permission Required",
+        rationale = "SafeAlerts needs location access to share your live location with your trusted contacts during an emergency and calculate safety routes.",
+        limitation = "Without location permission, emergency alerts cannot include your live GPS coordinates or map link."
+    ),
+    BACKGROUND_LOCATION(
+        title = "Background Location Required",
+        rationale = "SafeAlerts needs \"Allow all the time\" location access so your journey or safety timer can continuously track and protect you even when the app is closed or the screen is locked.",
+        limitation = "Without background location, live tracking will pause when the application is minimized."
+    ),
+    SMS(
+        title = "SMS Permission Required",
+        rationale = "SafeAlerts requires SMS permission to send emergency text messages with your location link directly to your emergency contacts.",
+        limitation = "Without SMS permission, emergency SOS messages cannot be sent over cellular networks."
+    ),
+    CONTACTS(
+        title = "Contacts Permission Required",
+        rationale = "SafeAlerts needs access to your contacts so you can quickly choose and import your trusted emergency contacts from your address book.",
+        limitation = "Without contacts access, you will need to type contact names and phone numbers manually."
+    ),
+    NOTIFICATIONS(
+        title = "Notification Permission Required",
+        rationale = "SafeAlerts needs notification permission to show emergency countdowns, active journey statuses, and safety check-in reminders.",
+        limitation = "Without notification permission, background safety alerts and countdown warnings will not be visible."
+    ),
+    MICROPHONE(
+        title = "Microphone Permission Required",
+        rationale = "SafeAlerts needs microphone access to listen for emergency trigger phrases like \"help me\" when voice alerts are enabled.",
+        limitation = "Without microphone access, voice-triggered emergency alerts cannot be detected."
+    ),
+    BLUETOOTH(
+        title = "Bluetooth Permission Required",
+        rationale = "SafeAlerts needs Bluetooth access to discover nearby devices and transmit offline SOS alerts and walkie-talkie messages without cellular or internet connectivity.",
+        limitation = "Without Bluetooth permission, offline nearby SOS and mesh communication cannot function."
+    )
+}
+
+/**
  * Centralized Permission Manager.
  * Checks, verifies, and manages runtime permissions contextually.
  */
@@ -70,6 +115,17 @@ object PermissionManager {
     fun hasLocationPermission(context: Context): Boolean =
         hasPermission(context, PERMISSION_FINE_LOCATION) || hasPermission(context, PERMISSION_COARSE_LOCATION)
 
+    fun hasFineLocationPermission(context: Context): Boolean =
+        hasPermission(context, PERMISSION_FINE_LOCATION)
+
+    fun hasBackgroundLocationPermission(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            hasPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        } else {
+            hasLocationPermission(context)
+        }
+    }
+
     fun hasRecordAudioPermission(context: Context): Boolean =
         hasPermission(context, PERMISSION_RECORD_AUDIO)
 
@@ -81,16 +137,51 @@ object PermissionManager {
         }
     }
 
+    fun isFeatureGranted(context: Context, feature: AppPermissionFeature): Boolean {
+        return when (feature) {
+            AppPermissionFeature.LOCATION -> hasLocationPermission(context)
+            AppPermissionFeature.BACKGROUND_LOCATION -> hasBackgroundLocationPermission(context)
+            AppPermissionFeature.SMS -> hasSmsPermission(context)
+            AppPermissionFeature.CONTACTS -> hasContactsPermission(context)
+            AppPermissionFeature.NOTIFICATIONS -> hasNotificationPermission(context)
+            AppPermissionFeature.MICROPHONE -> hasRecordAudioPermission(context)
+            AppPermissionFeature.BLUETOOTH -> hasBluetoothPermissions(context)
+        }
+    }
+
+    fun getPermissionsForFeature(feature: AppPermissionFeature): List<String> {
+        return when (feature) {
+            AppPermissionFeature.LOCATION -> listOf(PERMISSION_FINE_LOCATION, PERMISSION_COARSE_LOCATION)
+            AppPermissionFeature.BACKGROUND_LOCATION -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                listOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            } else emptyList()
+            AppPermissionFeature.SMS -> listOf(PERMISSION_SEND_SMS)
+            AppPermissionFeature.CONTACTS -> listOf(PERMISSION_READ_CONTACTS)
+            AppPermissionFeature.NOTIFICATIONS -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                listOf(Manifest.permission.POST_NOTIFICATIONS)
+            } else emptyList()
+            AppPermissionFeature.MICROPHONE -> listOf(PERMISSION_RECORD_AUDIO)
+            AppPermissionFeature.BLUETOOTH -> getBluetoothRequiredPermissions()
+        }
+    }
+
     fun shouldShowRationale(activity: Activity, permission: String): Boolean {
         if (permission.isBlank()) return false
         return ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
     }
 
+    fun isPermanentlyDenied(activity: Activity, permissions: List<String>, hasAttempted: Boolean): Boolean {
+        if (!hasAttempted) return false
+        return permissions.any { perm ->
+            !hasPermission(activity, perm) && !shouldShowRationale(activity, perm)
+        }
+    }
+
     fun getAllRequiredPermissions(): List<String> {
         val permissions = mutableListOf(
+            PERMISSION_SEND_SMS,
             PERMISSION_FINE_LOCATION,
             PERMISSION_COARSE_LOCATION,
-            PERMISSION_SEND_SMS,
             PERMISSION_READ_CONTACTS,
             PERMISSION_RECORD_AUDIO
         )
@@ -128,17 +219,17 @@ object PermissionManager {
     fun getPermissionDescriptors(context: Context): List<AppPermissionInfo> {
         val list = mutableListOf(
             AppPermissionInfo(
-                permission = PERMISSION_FINE_LOCATION,
-                title = "GPS Location (Precise & Coarse)",
-                description = "Acquires real-time coordinates and generates a Google Maps link in your emergency alert SMS.",
-                isGranted = hasLocationPermission(context),
+                permission = PERMISSION_SEND_SMS,
+                title = "Emergency SMS (SEND_SMS)",
+                description = "Sends emergency SMS from your SIM to your saved contacts for SOS or the automatic triggers you enable. Carrier charges may apply. Does not read your SMS inbox.",
+                isGranted = hasSmsPermission(context),
                 isEssential = true
             ),
             AppPermissionInfo(
-                permission = PERMISSION_SEND_SMS,
-                title = "Direct Emergency SMS",
-                description = "Automatically sends emergency alerts directly via cellular network without requiring Internet.",
-                isGranted = hasSmsPermission(context),
+                permission = PERMISSION_FINE_LOCATION,
+                title = "GPS Location (Precise & Coarse)",
+                description = "Adds your location to emergency alerts and updates authorized recipients during an active sharing session, including in the background with a visible notification.",
+                isGranted = hasLocationPermission(context),
                 isEssential = true
             ),
             AppPermissionInfo(
@@ -166,7 +257,7 @@ object PermissionManager {
             AppPermissionInfo(
                 permission = PERMISSION_RECORD_AUDIO,
                 title = "Microphone (Voice Emergency)",
-                description = "Enables hands-free emergency dispatch when you say 'HELP'. Audio is processed only on-device.",
+                description = "Listens for emergency phrases on Home or during a speech test. On-device recognition is preferred; your phone's speech provider may process audio online if it is unavailable.",
                 isGranted = hasRecordAudioPermission(context),
                 isEssential = false
             )

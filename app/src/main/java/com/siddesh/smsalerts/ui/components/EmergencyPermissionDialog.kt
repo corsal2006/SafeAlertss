@@ -1,295 +1,91 @@
 package com.siddesh.smsalerts.ui.components
 
-import android.content.Context
+import android.Manifest
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Contacts
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.siddesh.smsalerts.ui.theme.CardBorder
-import com.siddesh.smsalerts.ui.theme.EmergencyRed
-import com.siddesh.smsalerts.ui.theme.StatusSuccess
-import com.siddesh.smsalerts.ui.theme.StatusWarning
-import com.siddesh.smsalerts.ui.theme.SurfaceCard
-import com.siddesh.smsalerts.ui.theme.SurfaceCardElevated
-import com.siddesh.smsalerts.ui.theme.TextMuted
-import com.siddesh.smsalerts.ui.theme.TextPrimary
-import com.siddesh.smsalerts.ui.theme.TextSecondary
+import androidx.compose.ui.window.Dialog
+import com.siddesh.smsalerts.data.preferences.AppUserPreferences
+import com.siddesh.smsalerts.data.preferences.UserPreferencesDataStore
 import com.siddesh.smsalerts.utils.PermissionManager
+import kotlinx.coroutines.launch
 
-/**
- * Proactive First App Setup Permission Dialog.
- * Clearly explains why Location, SMS, Contacts, Notifications, and Audio permissions
- * are required before an emergency occurs, and launches the standard Android permission sequence.
- */
+/** Contextual SOS setup: no contacts, microphone or Bluetooth permission batch. */
 @Composable
-fun EmergencyPermissionDialog(
-    onDismiss: () -> Unit,
-    onPermissionsUpdated: () -> Unit
-) {
+fun EmergencyPermissionDialog(onDismiss: () -> Unit, onPermissionsUpdated: () -> Unit,
+    onNavigateToContacts: (() -> Unit)? = null, onContinue: (() -> Unit)? = null) {
     val context = LocalContext.current
-    var hasAttemptedRequest by remember { mutableStateOf(false) }
-
-    // Launcher for all missing required permissions
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        hasAttemptedRequest = true
-        onPermissionsUpdated()
-        if (PermissionManager.hasAllRequiredPermissions(context)) {
-            onDismiss()
-        }
+    val scope = rememberCoroutineScope()
+    val store = remember { UserPreferencesDataStore(context) }
+    val prefs by store.preferencesFlow.collectAsState(AppUserPreferences())
+    var revision by remember { mutableIntStateOf(0) }
+    var attempted by remember { mutableStateOf(setOf<String>()) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        revision++; onPermissionsUpdated()
     }
-
-    val permissionItems = PermissionManager.getPermissionDescriptors(context)
-    val hasAllGranted = permissionItems.all { it.isGranted }
-    val missingCount = permissionItems.count { !it.isGranted }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceCardElevated,
-        icon = {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(EmergencyRed.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Security,
-                    contentDescription = null,
-                    tint = EmergencyRed,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        },
-        title = {
-            Text(
-                text = "Emergency Readiness Setup",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = TextPrimary
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                Text(
-                    text = "To protect you instantly during an emergency, Safe Alerts requests permissions now so your alerts can be sent without runtime delays or interruptions.",
-                    fontSize = 13.sp,
-                    color = TextSecondary,
-                    lineHeight = 18.sp
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                permissionItems.forEach { item ->
-                    PermissionRow(item = item)
-                    Spacer(modifier = Modifier.height(8.dp))
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) { revision++; onPermissionsUpdated() }
+        }
+        lifecycle.lifecycle.addObserver(observer)
+        onDispose { lifecycle.lifecycle.removeObserver(observer) }
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = MaterialTheme.shapes.large) {
+            Column(Modifier.fillMaxWidth().heightIn(max = 620.dp).verticalScroll(rememberScrollState())
+                .imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Prepare emergency alert", style = MaterialTheme.typography.titleLarge)
+                Text("Choose what to share. Denied permissions do not prevent saving an incident on this phone.")
+                Row {
+                    Text("Include my location in SOS and share updates with authorized recipients while the incident is active, including in the background with a visible notification", Modifier.weight(1f))
+                    Switch(prefs.locationSharingEnabled, onCheckedChange = { enabled ->
+                        scope.launch { store.updateLocationSharing(enabled); onPermissionsUpdated() }
+                    })
                 }
-
-                if (hasAttemptedRequest && !hasAllGranted) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(StatusWarning.copy(alpha = 0.12f))
-                            .border(1.dp, StatusWarning.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
-                            .padding(10.dp)
-                    ) {
-                        Text(
-                            text = "Some permissions remain ungranted. If previously denied with 'Don't ask again', please enable them in Android Settings for full emergency functionality.",
-                            fontSize = 11.sp,
-                            color = TextSecondary,
-                            lineHeight = 15.sp
-                        )
+                val permissions = remember(revision, prefs.locationSharingEnabled, prefs.directSmsEnabled) {
+                    PermissionManager.getPermissionDescriptors(context).filter {
+                        (it.permission == Manifest.permission.ACCESS_FINE_LOCATION && prefs.locationSharingEnabled) ||
+                        (it.permission == Manifest.permission.SEND_SMS && prefs.directSmsEnabled) ||
+                        it.permission == Manifest.permission.POST_NOTIFICATIONS
                     }
                 }
-            }
-        },
-        confirmButton = {
-            if (!hasAllGranted) {
-                Button(
-                    onClick = {
-                        val missing = PermissionManager.getMissingPermissions(context)
-                        if (missing.isNotEmpty()) {
-                            permissionLauncher.launch(missing.toTypedArray())
-                        } else {
-                            onDismiss()
+                permissions.forEach { item ->
+                    Text(item.title, style = MaterialTheme.typography.titleSmall)
+                    Text(item.description, style = MaterialTheme.typography.bodySmall)
+                    if (item.isGranted) Text("Granted")
+                    else {
+                        val activity = context as? Activity
+                        val settings = item.permission in attempted && activity != null &&
+                            !PermissionManager.shouldShowRationale(activity, item.permission)
+                        OutlinedButton(onClick = {
+                            if (settings) PermissionManager.openAppSettings(context)
+                            else {
+                                attempted = attempted + item.permission
+                                launcher.launch(if (item.permission == Manifest.permission.ACCESS_FINE_LOCATION)
+                                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    else arrayOf(item.permission))
+                            }
+                        }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text(if (settings) "Open Android settings" else "Allow ${item.title}")
                         }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = if (hasAttemptedRequest) "RETRY PERMISSIONS ($missingCount)" else "GRANT PERMISSIONS",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                }
-            } else {
-                Button(
-                    onClick = onDismiss,
-                    colors = ButtonDefaults.buttonColors(containerColor = StatusSuccess),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("ALL SET ✓", fontWeight = FontWeight.Bold)
-                }
-            }
-        },
-        dismissButton = {
-            Row {
-                if (hasAttemptedRequest && !hasAllGranted) {
-                    OutlinedButton(
-                        onClick = { PermissionManager.openAppSettings(context) },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Settings", fontSize = 12.sp)
                     }
                 }
-
-                TextButton(onClick = onDismiss) {
-                    Text("CONTINUE", color = TextSecondary, fontSize = 13.sp)
+                Text("SMS uses your SIM and saved personal contacts. Carrier charges may apply. Submission does not confirm delivery.",
+                    style = MaterialTheme.typography.bodySmall)
+                onNavigateToContacts?.let { OutlinedButton(onClick = it, Modifier.fillMaxWidth()) { Text("Manage emergency contacts") } }
+                Button(onClick = { (onContinue ?: onDismiss)() }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text(if (onContinue == null) "Done" else "Continue with available channels")
                 }
-            }
-        }
-    )
-}
-
-@Composable
-private fun PermissionRow(item: PermissionManager.AppPermissionInfo) {
-    val icon: ImageVector = when (item.permission) {
-        PermissionManager.PERMISSION_FINE_LOCATION,
-        PermissionManager.PERMISSION_COARSE_LOCATION -> Icons.Default.LocationOn
-        PermissionManager.PERMISSION_SEND_SMS -> Icons.Default.Send
-        PermissionManager.PERMISSION_READ_CONTACTS -> Icons.Default.Contacts
-        PermissionManager.PERMISSION_RECORD_AUDIO -> Icons.Default.Mic
-        else -> Icons.Default.Notifications
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(SurfaceCard)
-            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
-            .padding(10.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.Top,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (item.isGranted) StatusSuccess.copy(alpha = 0.15f)
-                        else EmergencyRed.copy(alpha = 0.15f)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (item.isGranted) Icons.Default.CheckCircle else icon,
-                    contentDescription = null,
-                    tint = if (item.isGranted) StatusSuccess else EmergencyRed,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = item.title,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        color = TextPrimary
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(
-                                if (item.isGranted) StatusSuccess.copy(alpha = 0.15f)
-                                else if (item.isEssential) EmergencyRed.copy(alpha = 0.15f)
-                                else Color.White.copy(alpha = 0.08f)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = if (item.isGranted) "GRANTED" else if (item.isEssential) "REQUIRED" else "OPTIONAL",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (item.isGranted) StatusSuccess else if (item.isEssential) EmergencyRed else TextMuted
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = item.description,
-                    fontSize = 11.sp,
-                    color = TextSecondary,
-                    lineHeight = 15.sp
-                )
+                TextButton(onClick = onDismiss, Modifier.fillMaxWidth()) { Text("Cancel") }
             }
         }
     }

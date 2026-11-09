@@ -9,7 +9,9 @@ data class MeshPeer(
     val bluetoothAddress: String,
     val rssi: Int = -60,
     val lastSeenTimestamp: Long = System.currentTimeMillis(),
-    val isConnected: Boolean = false
+    val isConnected: Boolean = false,
+    val isAuthenticated: Boolean = false,
+    val verificationFingerprint: String = ""
 ) {
     val signalStrengthDescription: String
         get() = when {

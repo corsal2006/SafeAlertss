@@ -146,7 +146,7 @@ fun LoginScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Security,
-                    contentDescription = "SafeAlert Logo",
+                    contentDescription = "SafeAlerts Logo",
                     tint = EmergencyRed,
                     modifier = Modifier.size(40.dp)
                 )
@@ -155,7 +155,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "SafeAlert",
+                text = "SafeAlerts",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -320,7 +320,7 @@ fun LoginScreen(
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .clickable(onClick = onNavigateToForgotPassword)
-                        .padding(vertical = 4.dp)
+                        .padding(horizontal = 8.dp, vertical = 10.dp)
                 )
             }
 
@@ -437,7 +437,9 @@ fun LoginScreen(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = EmergencyRed,
-                    modifier = Modifier.clickable(onClick = onNavigateToRegister)
+                    modifier = Modifier
+                        .clickable(onClick = onNavigateToRegister)
+                        .padding(horizontal = 8.dp, vertical = 10.dp)
                 )
             }
         }

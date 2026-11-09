@@ -1,133 +1,60 @@
 package com.siddesh.smsalerts.mesh
 
 import android.content.Context
-import android.util.Log
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
+import android.util.AtomicFile
 import java.io.File
+import org.json.JSONArray
 
-private const val TAG = "SafeAlerts/MeshQueue"
-
-/**
- * Durable store-and-forward queue for SafeAlerts Offline Mesh.
- * Saves unacknowledged SOS packets to internal disk storage.
- * Opportunistically uploads relayed emergency packets to Firebase Firestore when Internet becomes available.
- */
-class MeshStoreAndForwardQueue(private val context: Context) {
-
-    private val queueFile = File(context.filesDir, "safealerts_mesh_queue.json")
-    private val lock = Any()
-
-    suspend fun enqueue(packet: MeshPacket) = withContext(Dispatchers.IO) {
-        synchronized(lock) {
-            val currentList = loadPacketsInternal().toMutableList()
-            // Avoid duplicate message IDs in queue
-            if (currentList.none { it.messageId == packet.messageId }) {
-                currentList.add(packet)
-                savePacketsInternal(currentList)
-                Log.d(TAG, "Enqueued packet ${packet.messageId} (queue size: ${currentList.size})")
-            }
-        }
-    }
-
-    suspend fun getPendingPackets(): List<MeshPacket> = withContext(Dispatchers.IO) {
-        synchronized(lock) {
-            val now = System.currentTimeMillis()
-            val valid = loadPacketsInternal().filter { it.canForward() && !it.isExpired(now) }
-            // Automatically prune expired packets
-            savePacketsInternal(valid)
-            return@withContext valid
-        }
-    }
-
-    suspend fun removePacket(messageId: String) = withContext(Dispatchers.IO) {
-        synchronized(lock) {
-            val currentList = loadPacketsInternal().toMutableList()
-            if (currentList.removeAll { it.messageId == messageId }) {
-                savePacketsInternal(currentList)
-                Log.d(TAG, "Removed packet $messageId from queue")
-            }
-        }
-    }
-
-    suspend fun getQueueCount(): Int = withContext(Dispatchers.IO) {
-        synchronized(lock) {
-            return@withContext loadPacketsInternal().size
-        }
-    }
-
-    /**
-     * Gateway forwarder: If this device has internet access, forward relayed SOS packets to Cloud Firestore.
-     */
-    suspend fun uploadPendingToCloudGateway() = withContext(Dispatchers.IO) {
-        val pending = getPendingPackets()
-        if (pending.isEmpty()) return@withContext
-
-        try {
-            val firestore = FirebaseFirestore.getInstance()
-            for (packet in pending) {
-                if (packet.packetType == MeshPacket.TYPE_SOS_ALERT) {
-                    val gatewayDoc = mapOf(
-                        "emergencyId" to packet.emergencyId,
-                        "originMessageId" to packet.messageId,
-                        "originDeviceId" to packet.senderDeviceId,
-                        "senderName" to packet.senderName,
-                        "emergencyType" to packet.emergencyType,
-                        "messageText" to packet.messageText,
-                        "latitude" to packet.latitude,
-                        "longitude" to packet.longitude,
-                        "accuracy" to packet.accuracy,
-                        "timestamp" to packet.timestamp,
-                        "hopCount" to packet.hopCount,
-                        "relayedBy" to MeshSecurity.getOrCreatePseudonymousDeviceId(context),
-                        "relayedAt" to System.currentTimeMillis(),
-                        "status" to "RELAYED_VIA_MESH_GATEWAY"
-                    )
-
-                    firestore.collection("mesh_relayed_emergencies")
-                        .document(packet.emergencyId)
-                        .set(gatewayDoc)
-                        .addOnSuccessListener {
-                            Log.i(TAG, "GATEWAY_SUCCESS: Relayed emergency ${packet.emergencyId} uploaded to cloud!")
-                        }
-                        .addOnFailureListener { e ->
-                            Log.w(TAG, "Gateway upload failed for ${packet.emergencyId}: ${e.message}")
-                        }
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Gateway forward exception: ${e.message}")
-        }
-    }
-
-    private fun loadPacketsInternal(): List<MeshPacket> {
-        if (!queueFile.exists()) return emptyList()
+/** Bounded encrypted queue. Cloud ingestion of a nearby stranger's location is deliberately unsupported. */
+class MeshStoreAndForwardQueue(private val context: Context, private val label: String = "queue") {
+    companion object { private val lock = Any() }
+    private val file get() = AtomicFile(File(context.filesDir, "mesh_${MeshSecurity.sha256Hex(MeshSecurity.groupCode(context).orEmpty()).take(16)}_${label}.enc"))
+    private fun load(includeExpired: Boolean = false): List<MeshPacket> {
+        if (!file.baseFile.exists()) return emptyList()
         return try {
-            val content = queueFile.readText(Charsets.UTF_8)
-            val jsonArray = JSONArray(content)
-            val list = mutableListOf<MeshPacket>()
-            for (i in 0 until jsonArray.length()) {
-                val itemStr = jsonArray.getString(i)
-                MeshPacket.fromJson(itemStr)?.let { list.add(it) }
-            }
-            list
+            val decryptedBytes = MeshSecurity.decryptLocal(file.openRead().use { it.readBytes() })
+            val array = JSONArray(decryptedBytes.toString(Charsets.UTF_8))
+            (0 until array.length()).mapNotNull { MeshPacket.fromJson(array.getString(it)) }
+                .filter { includeExpired || !it.isExpired() }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to read mesh queue file: ${e.message}")
-            emptyList()
+            throw java.io.IOException("Saved nearby queue could not be read; preserving it for recovery", e)
         }
     }
-
-    private fun savePacketsInternal(packets: List<MeshPacket>) {
+    private fun save(packets: List<MeshPacket>) {
+        val bytes = JSONArray(packets.map { it.toJson() }).toString().toByteArray()
+        val stream = file.startWrite()
         try {
-            val jsonArray = JSONArray()
-            for (packet in packets) {
-                jsonArray.put(packet.toJson())
-            }
-            queueFile.writeText(jsonArray.toString(), Charsets.UTF_8)
+            stream.write(MeshSecurity.encryptLocal(bytes))
+            file.finishWrite(stream)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save mesh queue file: ${e.message}")
+            file.failWrite(stream)
+            com.siddesh.smsalerts.utils.PrivacyLog.e("MeshQueue", "Failed saving queue: ${e.message}")
+            throw java.io.IOException("Nearby packet could not be saved", e)
         }
     }
+    suspend fun enqueue(packet: MeshPacket): List<MeshPacket> = synchronized(lock) {
+        val list = load().filterNot { it.messageId == packet.messageId }.toMutableList()
+        val evicted = mutableListOf<MeshPacket>()
+        require(JSONArray(listOf(packet.toJson())).toString().toByteArray().size <= 16_384) { "Packet exceeds queue capacity" }
+        while (list.size >= 12 || (JSONArray((list + packet).map { it.toJson() }).toString().toByteArray().size > 16_384)) {
+            val chat = list.indexOfFirst { it.packetType != MeshPacket.TYPE_SOS_ALERT }
+            if (chat >= 0) evicted.add(list.removeAt(chat)) else throw IllegalStateException("Nearby emergency queue full")
+        }
+        list.add(packet); save(list)
+        evicted
+    }
+    suspend fun expirePackets(): List<MeshPacket> = synchronized(lock) {
+        val packets = load(includeExpired = true)
+        val expired = packets.filter { it.isExpired() }
+        if (expired.isNotEmpty()) save(packets.filterNot { it.isExpired() })
+        expired
+    }
+    suspend fun getPendingPackets(): List<MeshPacket> = synchronized(lock) { load().sortedBy { if (it.packetType == MeshPacket.TYPE_SOS_ALERT) 0 else 1 } }
+    suspend fun removePacket(messageId: String) = synchronized(lock) {
+        val packets = load()
+        // Removing a nonexistent packet must not encrypt an empty queue without a configured key.
+        if (packets.any { it.messageId == messageId }) save(packets.filterNot { it.messageId == messageId })
+    }
+    suspend fun getQueueCount(): Int = synchronized(lock) { load().size }
+    suspend fun uploadPendingToCloudGateway() { /* No cloud recipient authorization exists for relayed packets. */ }
 }

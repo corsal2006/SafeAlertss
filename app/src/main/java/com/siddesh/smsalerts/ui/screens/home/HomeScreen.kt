@@ -41,16 +41,22 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShareLocation
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -106,7 +112,8 @@ fun HomeScreen(
     onNavigateToTriggers: () -> Unit = onNavigateToSettings,
     onNavigateToWalkieTalkie: () -> Unit = {},
     onNavigateToWomensSafety: () -> Unit = {},
-    onNavigateToTrustedCircle: () -> Unit = {}
+    onNavigateToTrustedCircle: () -> Unit = {},
+    onNavigateToIncident: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val userProfile by homeViewModel.userProfile.collectAsState()
@@ -118,8 +125,22 @@ fun HomeScreen(
     val requireHold by homeViewModel.requireHold.collectAsState()
     val serviceReadiness by homeViewModel.serviceReadiness.collectAsState()
     val safetyCheckIn by homeViewModel.safetyCheckInState.collectAsState()
+    val activeIncident by homeViewModel.activeIncident.collectAsState()
 
     val emergencyManager = remember { com.siddesh.smsalerts.service.EmergencyManager.getInstance(context) }
+    val emergencyStage by emergencyManager.stage.collectAsState()
+
+    LaunchedEffect(emergencyStage) {
+        when (val s = emergencyStage) {
+            is com.siddesh.smsalerts.ui.viewmodel.SosStage.TriggerDetected -> {
+                onNavigateToCountdown(s.emergencyType, s.source)
+            }
+            is com.siddesh.smsalerts.ui.viewmodel.SosStage.Countdown -> {
+                onNavigateToCountdown("PERSONAL", "AUTOMATIC")
+            }
+            else -> {}
+        }
+    }
 
     // Voice Detector Lifecycle Integration
     val voiceDetector = remember {
@@ -131,11 +152,13 @@ fun HomeScreen(
         )
     }
 
+    val voiceStatus by voiceDetector.status.collectAsState()
+
     LaunchedEffect(userPreferences.shakeToAlertEnabled) {
         if (userPreferences.shakeToAlertEnabled) {
             com.siddesh.smsalerts.service.EmergencyProtectionService.startService(context)
         } else {
-            com.siddesh.smsalerts.service.EmergencyProtectionService.stopService(context)
+            if (!com.siddesh.smsalerts.service.EmergencyProtectionService.locationSessionActive) com.siddesh.smsalerts.service.EmergencyProtectionService.stopService(context)
         }
     }
 
@@ -160,18 +183,23 @@ fun HomeScreen(
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
-    var showPermissionSetupDialog by remember {
-        mutableStateOf(!PermissionManager.hasAllRequiredPermissions(context))
+    var requiredFeatureForDialog by remember {
+        mutableStateOf<com.siddesh.smsalerts.utils.AppPermissionFeature?>(null)
     }
+    var showPermissionSetupDialog by remember {
+        mutableStateOf(false)
+    }
+    var lastSosTapTime by remember { mutableStateOf(0L) }
+    var isEmergencyCardExpanded by remember { mutableStateOf(false) }
+    var showResolveConfirmDialog by remember { mutableStateOf(false) }
+    var isResolvingIncident by remember { mutableStateOf(false) }
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, userPreferences.voiceAlertEnabled) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 homeViewModel.refreshDashboard()
-                if (PermissionManager.hasAllRequiredPermissions(context)) {
-                    showPermissionSetupDialog = false
-                }
-            }
+                if (userPreferences.voiceAlertEnabled && com.siddesh.smsalerts.utils.PermissionManager.hasRecordAudioPermission(context)) voiceDetector.startListening()
+            } else if (event == Lifecycle.Event.ON_PAUSE) { voiceDetector.stopListening() }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
@@ -185,15 +213,73 @@ fun HomeScreen(
 
     if (showPermissionSetupDialog) {
         EmergencyPermissionDialog(
+            onContinue = { showPermissionSetupDialog = false; onNavigateToCountdown("EMERGENCY", "BUTTON") },
             onDismiss = {
                 showPermissionSetupDialog = false
             },
             onPermissionsUpdated = {
                 homeViewModel.refreshDashboard()
-                if (PermissionManager.hasAllRequiredPermissions(context)) {
-                    showPermissionSetupDialog = false
+            }
+        )
+    }
+
+    requiredFeatureForDialog?.let { feature ->
+        com.siddesh.smsalerts.ui.components.SafeAlertPermissionDialog(
+            feature = feature,
+            onDismiss = { requiredFeatureForDialog = null },
+            onPermissionGranted = {
+                val f = feature
+                requiredFeatureForDialog = null
+                homeViewModel.refreshDashboard()
+                if (f == com.siddesh.smsalerts.utils.AppPermissionFeature.LOCATION) {
+                    if (!com.siddesh.smsalerts.utils.PermissionManager.hasSmsPermission(context) && userPreferences.directSmsEnabled) {
+                        requiredFeatureForDialog = com.siddesh.smsalerts.utils.AppPermissionFeature.SMS
+                    } else {
+                        onNavigateToCountdown("EMERGENCY", "BUTTON")
+                    }
+                } else if (f == com.siddesh.smsalerts.utils.AppPermissionFeature.SMS) {
+                    onNavigateToCountdown("EMERGENCY", "BUTTON")
                 }
             }
+        )
+    }
+
+    if (showResolveConfirmDialog && activeIncident != null) {
+        AlertDialog(
+            onDismissRequest = { showResolveConfirmDialog = false },
+            title = {
+                Text("Confirm Safe Resolution", fontWeight = FontWeight.Bold, color = TextPrimary)
+            },
+            text = {
+                Text(
+                    "Are you safe? Resolving this emergency will update your incident status to SAFE/RESOLVED and cancel ongoing dispatch notifications.",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val incId = activeIncident?.incidentId
+                        showResolveConfirmDialog = false
+                        if (!incId.isNullOrBlank()) {
+                            isResolvingIncident = true
+                            homeViewModel.resolveActiveEmergency(incId)
+                            isResolvingIncident = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusSuccess)
+                ) {
+                    Text("Yes, I'm Safe", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResolveConfirmDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = SurfaceCardElevated
         )
     }
 
@@ -216,13 +302,38 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (userPreferences.voiceAlertEnabled && voiceStatus.isNotBlank() && voiceStatus != "Voice off") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(bottom = 8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceCard.copy(alpha = 0.8f))
+                        .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = null,
+                        tint = if (voiceStatus.startsWith("Listening")) EmergencyRed else TextSecondary,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = voiceStatus,
+                        color = TextSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
             // Greeting & Safety Status Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = homeViewModel.getDynamicGreeting(),
                         fontSize = 22.sp,
@@ -230,9 +341,13 @@ fun HomeScreen(
                         color = TextPrimary
                     )
                     Text(
-                        text = if (serviceReadiness.isReady) "System active • Ready for emergency" else "Action required • Configure contacts",
+                        text = when {
+                            !serviceReadiness.hasContacts -> "Action required • Configure contacts"
+                            !serviceReadiness.hasLocationReady -> "Action required • Enable location"
+                            else -> "System active • Ready for emergency"
+                        },
                         fontSize = 13.sp,
-                        color = if (serviceReadiness.isReady) StatusSuccess else StatusWarning,
+                        color = if (serviceReadiness.isReady && serviceReadiness.hasLocationReady) StatusSuccess else StatusWarning,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -289,7 +404,7 @@ fun HomeScreen(
                                 color = TextPrimary
                             )
                             Text(
-                                text = "Cellular SMS will transmit even without Internet connectivity.",
+                                text = "Without internet, only compatible nearby BLE peers can receive queued alerts.",
                                 fontSize = 11.sp,
                                 color = TextSecondary
                             )
@@ -298,17 +413,250 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // ACTIVE EMERGENCY INCIDENT CARD (Only when an emergency is actually active/dispatching)
+            activeIncident?.takeIf { it.state != "RESOLVED" && it.state != "CANCELLED" }?.let { incident ->
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    backgroundColor = EmergencyRed.copy(alpha = 0.16f),
+                    borderColor = EmergencyRed
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Header row with pulsating indicator, title, category, timestamp and badge
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(EmergencyRed)
+                            )
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "EMERGENCY ACTIVE",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = EmergencyRed,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = "Type: ${incident.emergencyType} • ${DateUtils.formatShortTime(incident.creationTimestamp)}",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
+                                )
+                            }
+
+                            // State Badge (pill)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(EmergencyRed.copy(alpha = 0.25f))
+                                    .border(1.dp, EmergencyRed, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = incident.state.uppercase(),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = EmergencyRed,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+
+                        // Short summary by default
+                        val shortSummary = if (incident.messageText.isNotBlank()) {
+                            if (incident.messageText.length > 110 && !isEmergencyCardExpanded) {
+                                incident.messageText.take(110).trimEnd() + "…"
+                            } else {
+                                incident.messageText
+                            }
+                        } else {
+                            "Emergency alerts dispatched. Live location tracking and recipient statuses active."
+                        }
+
+                        Text(
+                            text = shortSummary,
+                            fontSize = 12.sp,
+                            color = TextPrimary,
+                            lineHeight = 16.sp
+                        )
+
+                        // Expandable Details Section
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable { isEmergencyCardExpanded = !isEmergencyCardExpanded }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = if (isEmergencyCardExpanded) "Hide details ▲" else "View coordinates & status ▼",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF38BDF8)
+                            )
+                        }
+
+                        AnimatedVisibility(visible = isEmergencyCardExpanded) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SurfaceDark.copy(alpha = 0.6f))
+                                    .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
+                                    .padding(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                if (incident.latitude != null && incident.longitude != null &&
+                                    com.siddesh.smsalerts.data.location.LocationQuality.coordinates(incident.latitude, incident.longitude)) {
+                                    Text(
+                                        text = "GPS: %.5f, %.5f (±%.0fm)".format(
+                                            incident.latitude,
+                                            incident.longitude,
+                                            incident.accuracy ?: 0f
+                                        ),
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    com.siddesh.smsalerts.ui.components.SafeAlertGoogleMap(
+                                        modifier = Modifier.fillMaxWidth().height(180.dp),
+                                        centerLatitude = incident.latitude,
+                                        centerLongitude = incident.longitude,
+                                        zoom = 15f,
+                                        hasLocationPermission = isLocationReady,
+                                        incidentLocation = Pair(incident.latitude, incident.longitude),
+                                        incidentTitle = "Active SOS: ${incident.emergencyType}",
+                                        isIncidentActive = true,
+                                        showRecenterButton = false
+                                    )
+                                }
+                                if (incident.transportStatuses.isNotEmpty()) {
+                                    Text(
+                                        text = "Channels: " + incident.transportStatuses.entries.joinToString(", ") { "${it.key}: ${it.value}" },
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                                if (incident.recipientStatuses.isNotEmpty()) {
+                                    Text(
+                                        text = "Recipients: " + incident.recipientStatuses.entries.joinToString(", ") { "…${it.key.takeLast(4)}: ${it.value}" },
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                        }
+
+                        // Responsive Action Buttons: VIEW INCIDENT & I'M SAFE (RESOLVE)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onNavigateToIncident(incident.incidentId) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 44.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "VIEW INCIDENT",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 2,
+                                    softWrap = true
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = { showResolveConfirmDialog = true },
+                                enabled = !isResolvingIncident,
+                                modifier = Modifier
+                                    .weight(1.2f)
+                                    .heightIn(min = 44.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = StatusSuccess,
+                                    containerColor = StatusSuccess.copy(alpha = 0.12f)
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, StatusSuccess),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                            ) {
+                                if (isResolvingIncident) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(15.dp),
+                                        strokeWidth = 2.dp,
+                                        color = StatusSuccess
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                        tint = StatusSuccess
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "I'M SAFE (RESOLVE)",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StatusSuccess,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 2,
+                                    softWrap = true
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // SECTION 2: MAIN VISIBLE "EMERGENCY ALERT" BUTTON
             SosButton(
                 size = 205.dp,
                 requireHold = requireHold,
                 onSosTriggered = {
-                    if (PermissionManager.hasCoreEmergencyPermissions(context)) {
-                        onNavigateToCountdown("EMERGENCY", "BUTTON")
-                    } else {
-                        showPermissionSetupDialog = true
+                    val now = System.currentTimeMillis()
+                    if (now - lastSosTapTime > 2000L) {
+                        lastSosTapTime = now
+                        if (activeIncident != null) {
+                            onNavigateToIncident(activeIncident!!.incidentId)
+                        } else if (!com.siddesh.smsalerts.utils.PermissionManager.hasLocationPermission(context)) {
+                            requiredFeatureForDialog = com.siddesh.smsalerts.utils.AppPermissionFeature.LOCATION
+                        } else if (!com.siddesh.smsalerts.utils.PermissionManager.hasSmsPermission(context) && userPreferences.directSmsEnabled) {
+                            requiredFeatureForDialog = com.siddesh.smsalerts.utils.AppPermissionFeature.SMS
+                        } else {
+                            onNavigateToCountdown("EMERGENCY", "BUTTON")
+                        }
                     }
                 }
             )
@@ -724,7 +1072,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(88.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

@@ -19,7 +19,7 @@ val Context.userDataStore: DataStore<Preferences> by preferencesDataStore(name =
 
 data class AppUserPreferences(
     val defaultEmergencyMessage: String = "Emergency alert: I may need assistance. Please contact me as soon as possible.",
-    val locationSharingEnabled: Boolean = true,
+    val locationSharingEnabled: Boolean = false,
     val countdownDurationSeconds: Int = 5,
     val requireHoldToConfirm: Boolean = true,
     val hapticFeedbackEnabled: Boolean = true,
@@ -37,6 +37,8 @@ data class AppUserPreferences(
     // Women's Safety Journey
     val womensSafetyActive: Boolean = false,
     val womensSafetyDestination: String = "",
+    val journeyLatitude: String = "",
+    val journeyLongitude: String = "",
     val womensSafetyDurationMinutes: Int = 30,
     val womensSafetyTargetTimestamp: Long = 0L,
     val womensSafetyGracePeriodMinutes: Int = 2,
@@ -47,7 +49,7 @@ data class AppUserPreferences(
     val womensSafetyEscalationPolicy: String = "AUTO_EMERGENCY",
     // Trusted Circle
     val trustedCircleEnabled: Boolean = true,
-    val trustedCircleShareMyLocation: Boolean = true,
+    val trustedCircleShareMyLocation: Boolean = false,
     val trustedCircleShareDurationHours: Int = 8,
     val trustedCircleSharingStartTimestamp: Long = 0L,
     val pendingEmailLinkEmail: String = "",
@@ -55,39 +57,57 @@ data class AppUserPreferences(
     val savedEmail: String = "",
     // Advanced Emergency Trigger settings
     val emergencyButtonEnabled: Boolean = true,
-    val shakeToAlertEnabled: Boolean = true,
-    val requiredShakes: Int = 3,
+    val shakeToAlertEnabled: Boolean = false,
+    val requiredShakes: Int = 5,
     val shakeCooldownSeconds: Int = 30,
     val voiceAlertEnabled: Boolean = false,
     val emergencyCountdownSeconds: Int = 5,
     val requireConfirmation: Boolean = true,
     val allowSmsWithoutLocation: Boolean = true,
     // Offline Bluetooth Mesh settings
-    val bluetoothMeshEnabled: Boolean = true,
+    val bluetoothMeshEnabled: Boolean = false,
     val pseudonymousDeviceId: String = "",
     // Custom Voice Emergency Trigger phrases (comma separated or raw)
     val customEmergencyPhrases: String = "",
+    val phraseStorageError: String = "",
     // Emergency Services configuration (India verified numbers)
     val policeNumber: String = "112",
     val ambulanceNumber: String = "108",
     val fireNumber: String = "101",
-    val womensHelplineNumber: String = "1091",
+    val womensHelplineNumber: String = "181",
+    val womensCrisisNumber: String = "1091",
     val policeEnabled: Boolean = true,
     val ambulanceEnabled: Boolean = true,
     val fireEnabled: Boolean = true,
     val womensHelplineEnabled: Boolean = true,
+    val womensCrisisEnabled: Boolean = true,
     // Emergency Profile & Medical details
     val bloodGroup: String = "",
     val medicalNotes: String = "",
     val allergies: String = "",
     // Live Location Tracking during active emergency
     val liveLocationSharingActive: Boolean = false,
-    val activeEmergencyIncidentId: String = ""
+    val activeEmergencyIncidentId: String = "",
+    // Emergency Escalation tracking (persisted across restarts)
+    val safetyCheckInEscalated: Boolean = false,
+    val safetyCheckInIncidentId: String = "",
+    val womensSafetyEscalated: Boolean = false,
+    val womensSafetyIncidentId: String = "",
+    val checkInSessionId: String = "",
+    val journeySessionId: String = "",
+    val checkInOwnerUid: String = "",
+    val journeyOwnerUid: String = ""
 )
 
 class UserPreferencesDataStore(private val context: Context) {
 
     private object PreferenceKeys {
+        val CHECK_SESSION = stringPreferencesKey("check_session")
+        val JOURNEY_LAT = stringPreferencesKey("journey_lat")
+        val JOURNEY_LON = stringPreferencesKey("journey_lon")
+        val JOURNEY_SESSION = stringPreferencesKey("journey_session")
+        val CHECK_OWNER = stringPreferencesKey("check_owner")
+        val JOURNEY_OWNER = stringPreferencesKey("journey_owner")
         val EMERGENCY_MESSAGE = stringPreferencesKey("emergency_message")
         val LOCATION_SHARING = booleanPreferencesKey("location_sharing")
         val COUNTDOWN_DURATION = intPreferencesKey("countdown_duration")
@@ -112,14 +132,17 @@ class UserPreferencesDataStore(private val context: Context) {
         val BLUETOOTH_MESH_ENABLED = booleanPreferencesKey("bluetooth_mesh_enabled")
         val PSEUDONYMOUS_DEVICE_ID = stringPreferencesKey("pseudonymous_device_id")
         val CUSTOM_EMERGENCY_PHRASES = stringPreferencesKey("custom_emergency_phrases")
+        val ENCRYPTED_EMERGENCY_PHRASES = stringPreferencesKey("custom_emergency_phrases_encrypted")
         val POLICE_NUMBER = stringPreferencesKey("police_number")
         val AMBULANCE_NUMBER = stringPreferencesKey("ambulance_number")
         val FIRE_NUMBER = stringPreferencesKey("fire_number")
         val WOMENS_HELPLINE_NUMBER = stringPreferencesKey("womens_helpline_number")
+        val WOMENS_CRISIS_NUMBER = stringPreferencesKey("womens_crisis_number")
         val POLICE_ENABLED = booleanPreferencesKey("police_enabled")
         val AMBULANCE_ENABLED = booleanPreferencesKey("ambulance_enabled")
         val FIRE_ENABLED = booleanPreferencesKey("fire_enabled")
         val WOMENS_HELPLINE_ENABLED = booleanPreferencesKey("womens_helpline_enabled")
+        val WOMENS_CRISIS_ENABLED = booleanPreferencesKey("womens_crisis_enabled")
         val BLOOD_GROUP = stringPreferencesKey("blood_group")
         val MEDICAL_NOTES = stringPreferencesKey("medical_notes")
         val ALLERGIES = stringPreferencesKey("allergies")
@@ -145,6 +168,10 @@ class UserPreferencesDataStore(private val context: Context) {
         val TRUSTED_CIRCLE_SHARE_MY_LOCATION = booleanPreferencesKey("trusted_circle_share_my_location")
         val TRUSTED_CIRCLE_SHARE_DURATION_HOURS = intPreferencesKey("trusted_circle_share_duration_hours")
         val TRUSTED_CIRCLE_SHARING_START_TIME = longPreferencesKey("trusted_circle_sharing_start_time")
+        val CHECK_IN_ESCALATED = booleanPreferencesKey("check_in_escalated")
+        val CHECK_IN_INCIDENT_ID = stringPreferencesKey("check_in_incident_id")
+        val WOMENS_SAFETY_ESCALATED = booleanPreferencesKey("womens_safety_escalated")
+        val WOMENS_SAFETY_INCIDENT_ID = stringPreferencesKey("womens_safety_incident_id")
     }
 
     val preferencesFlow: Flow<AppUserPreferences> = context.userDataStore.data
@@ -153,11 +180,27 @@ class UserPreferencesDataStore(private val context: Context) {
             emit(emptyPreferences())
         }
         .map { preferences ->
+            val encryptedPhrases = preferences[PreferenceKeys.ENCRYPTED_EMERGENCY_PHRASES]
+            var phraseError = ""
+            val phrases = try { if (encryptedPhrases != null) {
+                com.siddesh.smsalerts.mesh.MeshSecurity.decryptLocal(
+                    android.util.Base64.decode(encryptedPhrases, android.util.Base64.NO_WRAP)
+                ).toString(Charsets.UTF_8)
+            } else {
+                val legacy = preferences[PreferenceKeys.CUSTOM_EMERGENCY_PHRASES].orEmpty()
+                if (legacy.isNotEmpty()) saveEncryptedPhrases(legacy)
+                legacy
+            } } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) {
+                phraseError = "Saved custom phrases could not be opened. Re-enter them in Emergency Triggers."
+                com.siddesh.smsalerts.utils.PrivacyLog.e("VoicePhrases", "Secure phrase storage unavailable", e)
+                ""
+            }
             AppUserPreferences(
                 defaultEmergencyMessage = preferences[PreferenceKeys.EMERGENCY_MESSAGE]
                     ?: "Emergency alert: I may need assistance. Please contact me as soon as possible.",
-                locationSharingEnabled = preferences[PreferenceKeys.LOCATION_SHARING] ?: true,
-                countdownDurationSeconds = preferences[PreferenceKeys.COUNTDOWN_DURATION] ?: 5,
+                locationSharingEnabled = preferences[PreferenceKeys.LOCATION_SHARING] ?: false,
+                countdownDurationSeconds = com.siddesh.smsalerts.service.CountdownPolicy.seconds(preferences[PreferenceKeys.COUNTDOWN_DURATION] ?: 5),
                 requireHoldToConfirm = preferences[PreferenceKeys.REQUIRE_HOLD] ?: true,
                 hapticFeedbackEnabled = preferences[PreferenceKeys.HAPTIC_FEEDBACK] ?: true,
                 themeMode = preferences[PreferenceKeys.THEME_MODE] ?: "dark",
@@ -173,6 +216,8 @@ class UserPreferencesDataStore(private val context: Context) {
                 safetyCheckInEscalationPolicy = preferences[PreferenceKeys.CHECK_IN_ESCALATION_POLICY] ?: "AUTO_EMERGENCY",
                 womensSafetyActive = preferences[PreferenceKeys.WOMENS_SAFETY_ACTIVE] ?: false,
                 womensSafetyDestination = preferences[PreferenceKeys.WOMENS_SAFETY_DESTINATION] ?: "",
+                journeyLatitude = preferences[PreferenceKeys.JOURNEY_LAT] ?: "",
+                journeyLongitude = preferences[PreferenceKeys.JOURNEY_LON] ?: "",
                 womensSafetyDurationMinutes = preferences[PreferenceKeys.WOMENS_SAFETY_DURATION_MINS] ?: 30,
                 womensSafetyTargetTimestamp = preferences[PreferenceKeys.WOMENS_SAFETY_TARGET_TIME] ?: 0L,
                 womensSafetyGracePeriodMinutes = preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_MINS] ?: 2,
@@ -182,36 +227,47 @@ class UserPreferencesDataStore(private val context: Context) {
                 womensSafetyAlertHelpline1091 = preferences[PreferenceKeys.WOMENS_SAFETY_ALERT_1091] ?: true,
                 womensSafetyEscalationPolicy = preferences[PreferenceKeys.WOMENS_SAFETY_ESCALATION_POLICY] ?: "AUTO_EMERGENCY",
                 trustedCircleEnabled = preferences[PreferenceKeys.TRUSTED_CIRCLE_ENABLED] ?: true,
-                trustedCircleShareMyLocation = preferences[PreferenceKeys.TRUSTED_CIRCLE_SHARE_MY_LOCATION] ?: true,
+                trustedCircleShareMyLocation = preferences[PreferenceKeys.TRUSTED_CIRCLE_SHARE_MY_LOCATION] ?: false,
                 trustedCircleShareDurationHours = preferences[PreferenceKeys.TRUSTED_CIRCLE_SHARE_DURATION_HOURS] ?: 8,
                 trustedCircleSharingStartTimestamp = preferences[PreferenceKeys.TRUSTED_CIRCLE_SHARING_START_TIME] ?: 0L,
                 pendingEmailLinkEmail = preferences[PreferenceKeys.PENDING_EMAIL_LINK_EMAIL] ?: "",
                 rememberEmail = preferences[PreferenceKeys.REMEMBER_EMAIL] ?: false,
                 savedEmail = preferences[PreferenceKeys.SAVED_EMAIL] ?: "",
                 emergencyButtonEnabled = preferences[PreferenceKeys.EMERGENCY_BUTTON_ENABLED] ?: true,
-                shakeToAlertEnabled = preferences[PreferenceKeys.SHAKE_TO_ALERT_ENABLED] ?: true,
-                requiredShakes = preferences[PreferenceKeys.REQUIRED_SHAKES] ?: 3,
+                shakeToAlertEnabled = preferences[PreferenceKeys.SHAKE_TO_ALERT_ENABLED] ?: false,
+                requiredShakes = 5,
                 shakeCooldownSeconds = preferences[PreferenceKeys.SHAKE_COOLDOWN_SECONDS] ?: 30,
                 voiceAlertEnabled = preferences[PreferenceKeys.VOICE_ALERT_ENABLED] ?: false,
-                emergencyCountdownSeconds = preferences[PreferenceKeys.EMERGENCY_COUNTDOWN_SECONDS] ?: 5,
+                emergencyCountdownSeconds = com.siddesh.smsalerts.service.CountdownPolicy.seconds(preferences[PreferenceKeys.COUNTDOWN_DURATION] ?: preferences[PreferenceKeys.EMERGENCY_COUNTDOWN_SECONDS] ?: 5),
                 requireConfirmation = preferences[PreferenceKeys.REQUIRE_CONFIRMATION] ?: true,
                 allowSmsWithoutLocation = preferences[PreferenceKeys.ALLOW_SMS_WITHOUT_LOCATION] ?: true,
-                bluetoothMeshEnabled = preferences[PreferenceKeys.BLUETOOTH_MESH_ENABLED] ?: true,
+                bluetoothMeshEnabled = preferences[PreferenceKeys.BLUETOOTH_MESH_ENABLED] ?: false,
                 pseudonymousDeviceId = preferences[PreferenceKeys.PSEUDONYMOUS_DEVICE_ID] ?: "",
-                customEmergencyPhrases = preferences[PreferenceKeys.CUSTOM_EMERGENCY_PHRASES] ?: "",
-                policeNumber = preferences[PreferenceKeys.POLICE_NUMBER] ?: "112",
-                ambulanceNumber = preferences[PreferenceKeys.AMBULANCE_NUMBER] ?: "108",
-                fireNumber = preferences[PreferenceKeys.FIRE_NUMBER] ?: "101",
-                womensHelplineNumber = preferences[PreferenceKeys.WOMENS_HELPLINE_NUMBER] ?: "1091",
+                customEmergencyPhrases = phrases,
+                phraseStorageError = phraseError,
+                policeNumber = preferences[PreferenceKeys.POLICE_NUMBER]?.ifBlank { "112" } ?: "112",
+                ambulanceNumber = preferences[PreferenceKeys.AMBULANCE_NUMBER]?.ifBlank { "108" } ?: "108",
+                fireNumber = preferences[PreferenceKeys.FIRE_NUMBER]?.ifBlank { "101" } ?: "101",
+                womensHelplineNumber = preferences[PreferenceKeys.WOMENS_HELPLINE_NUMBER]?.ifBlank { "181" } ?: "181",
+                womensCrisisNumber = preferences[PreferenceKeys.WOMENS_CRISIS_NUMBER]?.ifBlank { "1091" } ?: "1091",
                 policeEnabled = preferences[PreferenceKeys.POLICE_ENABLED] ?: true,
                 ambulanceEnabled = preferences[PreferenceKeys.AMBULANCE_ENABLED] ?: true,
                 fireEnabled = preferences[PreferenceKeys.FIRE_ENABLED] ?: true,
                 womensHelplineEnabled = preferences[PreferenceKeys.WOMENS_HELPLINE_ENABLED] ?: true,
+                womensCrisisEnabled = preferences[PreferenceKeys.WOMENS_CRISIS_ENABLED] ?: true,
                 bloodGroup = preferences[PreferenceKeys.BLOOD_GROUP] ?: "",
                 medicalNotes = preferences[PreferenceKeys.MEDICAL_NOTES] ?: "",
                 allergies = preferences[PreferenceKeys.ALLERGIES] ?: "",
                 liveLocationSharingActive = preferences[PreferenceKeys.LIVE_LOCATION_SHARING_ACTIVE] ?: false,
-                activeEmergencyIncidentId = preferences[PreferenceKeys.ACTIVE_EMERGENCY_INCIDENT_ID] ?: ""
+                activeEmergencyIncidentId = preferences[PreferenceKeys.ACTIVE_EMERGENCY_INCIDENT_ID] ?: "",
+                safetyCheckInEscalated = preferences[PreferenceKeys.CHECK_IN_ESCALATED] ?: false,
+                safetyCheckInIncidentId = preferences[PreferenceKeys.CHECK_IN_INCIDENT_ID] ?: "",
+                womensSafetyEscalated = preferences[PreferenceKeys.WOMENS_SAFETY_ESCALATED] ?: false,
+                womensSafetyIncidentId = preferences[PreferenceKeys.WOMENS_SAFETY_INCIDENT_ID] ?: "",
+                checkInSessionId = preferences[PreferenceKeys.CHECK_SESSION] ?: "",
+                journeySessionId = preferences[PreferenceKeys.JOURNEY_SESSION] ?: "",
+                checkInOwnerUid = preferences[PreferenceKeys.CHECK_OWNER] ?: "",
+                journeyOwnerUid = preferences[PreferenceKeys.JOURNEY_OWNER] ?: ""
             )
         }
 
@@ -284,7 +340,9 @@ class UserPreferencesDataStore(private val context: Context) {
 
     suspend fun updateCountdownDuration(seconds: Int) {
         context.userDataStore.edit { preferences ->
+            require(seconds in setOf(3, 5, 10))
             preferences[PreferenceKeys.COUNTDOWN_DURATION] = seconds
+            preferences[PreferenceKeys.EMERGENCY_COUNTDOWN_SECONDS] = seconds
         }
     }
 
@@ -319,6 +377,12 @@ class UserPreferencesDataStore(private val context: Context) {
         escalationPolicy: String = "AUTO_EMERGENCY"
     ) {
         context.userDataStore.edit { preferences ->
+            if (preferences[PreferenceKeys.CHECK_IN_ACTIVE] == true) return@edit
+            require(durationMinutes in 1..1440 && graceMinutes in 0..60)
+            preferences[PreferenceKeys.CHECK_SESSION] = java.util.UUID.randomUUID().toString()
+            preferences[PreferenceKeys.CHECK_OWNER] = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            preferences[PreferenceKeys.CHECK_IN_ESCALATED] = false
+            preferences[PreferenceKeys.CHECK_IN_INCIDENT_ID] = ""
             preferences[PreferenceKeys.CHECK_IN_DURATION] = durationMinutes
             preferences[PreferenceKeys.CHECK_IN_ACTIVE] = true
             preferences[PreferenceKeys.CHECK_IN_TARGET_TIME] = targetTimestamp
@@ -333,6 +397,7 @@ class UserPreferencesDataStore(private val context: Context) {
 
     suspend fun pauseSafetyCheckIn(remainingSeconds: Long) {
         context.userDataStore.edit { preferences ->
+            if (preferences[PreferenceKeys.CHECK_IN_ACTIVE] != true || preferences[PreferenceKeys.CHECK_IN_GRACE_ACTIVE] == true) return@edit
             preferences[PreferenceKeys.CHECK_IN_PAUSED] = true
             preferences[PreferenceKeys.CHECK_IN_REMAINING_SECS_ON_PAUSE] = remainingSeconds
         }
@@ -340,6 +405,7 @@ class UserPreferencesDataStore(private val context: Context) {
 
     suspend fun resumeSafetyCheckIn(newTargetTimestamp: Long) {
         context.userDataStore.edit { preferences ->
+            if (preferences[PreferenceKeys.CHECK_IN_ACTIVE] != true || preferences[PreferenceKeys.CHECK_IN_PAUSED] != true) return@edit
             preferences[PreferenceKeys.CHECK_IN_PAUSED] = false
             preferences[PreferenceKeys.CHECK_IN_TARGET_TIME] = newTargetTimestamp
             preferences[PreferenceKeys.CHECK_IN_REMAINING_SECS_ON_PAUSE] = 0L
@@ -361,6 +427,28 @@ class UserPreferencesDataStore(private val context: Context) {
             preferences[PreferenceKeys.CHECK_IN_GRACE_TARGET_TIME] = 0L
             preferences[PreferenceKeys.CHECK_IN_PAUSED] = false
             preferences[PreferenceKeys.CHECK_IN_REMAINING_SECS_ON_PAUSE] = 0L
+            preferences[PreferenceKeys.CHECK_IN_ESCALATED] = false
+            preferences[PreferenceKeys.CHECK_IN_INCIDENT_ID] = ""
+        }
+    }
+
+    suspend fun escalateSafetyCheckIn(incidentId: String) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferenceKeys.CHECK_IN_ACTIVE] = false
+            preferences[PreferenceKeys.CHECK_IN_TARGET_TIME] = 0L
+            preferences[PreferenceKeys.CHECK_IN_GRACE_ACTIVE] = false
+            preferences[PreferenceKeys.CHECK_IN_GRACE_TARGET_TIME] = 0L
+            preferences[PreferenceKeys.CHECK_IN_PAUSED] = false
+            preferences[PreferenceKeys.CHECK_IN_REMAINING_SECS_ON_PAUSE] = 0L
+            preferences[PreferenceKeys.CHECK_IN_ESCALATED] = true
+            preferences[PreferenceKeys.CHECK_IN_INCIDENT_ID] = incidentId
+        }
+    }
+
+    suspend fun clearSafetyCheckInEscalation() {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferenceKeys.CHECK_IN_ESCALATED] = false
+            preferences[PreferenceKeys.CHECK_IN_INCIDENT_ID] = ""
         }
     }
 
@@ -371,11 +459,18 @@ class UserPreferencesDataStore(private val context: Context) {
         gracePeriodMinutes: Int = 2,
         shareLiveLocation: Boolean = true,
         alertHelpline1091: Boolean = true,
-        escalationPolicy: String = "AUTO_EMERGENCY"
+        escalationPolicy: String = "AUTO_EMERGENCY",
+        latitude: Double? = null, longitude: Double? = null
     ) {
         context.userDataStore.edit { preferences ->
+            if (preferences[PreferenceKeys.WOMENS_SAFETY_ACTIVE] == true) return@edit
+            require(durationMinutes in 1..1440 && gracePeriodMinutes in 0..60)
+            preferences[PreferenceKeys.JOURNEY_SESSION] = java.util.UUID.randomUUID().toString()
+            preferences[PreferenceKeys.JOURNEY_OWNER] = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
             preferences[PreferenceKeys.WOMENS_SAFETY_ACTIVE] = true
             preferences[PreferenceKeys.WOMENS_SAFETY_DESTINATION] = destination
+            preferences[PreferenceKeys.JOURNEY_LAT] = latitude?.toString().orEmpty()
+            preferences[PreferenceKeys.JOURNEY_LON] = longitude?.toString().orEmpty()
             preferences[PreferenceKeys.WOMENS_SAFETY_DURATION_MINS] = durationMinutes
             preferences[PreferenceKeys.WOMENS_SAFETY_TARGET_TIME] = targetTimestamp
             preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_MINS] = gracePeriodMinutes
@@ -384,11 +479,14 @@ class UserPreferencesDataStore(private val context: Context) {
             preferences[PreferenceKeys.WOMENS_SAFETY_SHARE_LIVE_LOC] = shareLiveLocation
             preferences[PreferenceKeys.WOMENS_SAFETY_ALERT_1091] = alertHelpline1091
             preferences[PreferenceKeys.WOMENS_SAFETY_ESCALATION_POLICY] = escalationPolicy
+            preferences[PreferenceKeys.WOMENS_SAFETY_ESCALATED] = false
+            preferences[PreferenceKeys.WOMENS_SAFETY_INCIDENT_ID] = ""
         }
     }
 
     suspend fun extendWomensSafetyJourney(newTargetTimestamp: Long) {
         context.userDataStore.edit { preferences ->
+            if (preferences[PreferenceKeys.WOMENS_SAFETY_ACTIVE] != true) return@edit
             preferences[PreferenceKeys.WOMENS_SAFETY_TARGET_TIME] = newTargetTimestamp
             preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_ACTIVE] = false
             preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_TARGET_TIME] = 0L
@@ -409,6 +507,27 @@ class UserPreferencesDataStore(private val context: Context) {
             preferences[PreferenceKeys.WOMENS_SAFETY_TARGET_TIME] = 0L
             preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_ACTIVE] = false
             preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_TARGET_TIME] = 0L
+            preferences[PreferenceKeys.WOMENS_SAFETY_ESCALATED] = false
+            preferences[PreferenceKeys.WOMENS_SAFETY_INCIDENT_ID] = ""
+        }
+    }
+
+    suspend fun escalateWomensSafety(incidentId: String) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferenceKeys.WOMENS_SAFETY_ACTIVE] = false
+            preferences[PreferenceKeys.WOMENS_SAFETY_DESTINATION] = ""
+            preferences[PreferenceKeys.WOMENS_SAFETY_TARGET_TIME] = 0L
+            preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_ACTIVE] = false
+            preferences[PreferenceKeys.WOMENS_SAFETY_GRACE_TARGET_TIME] = 0L
+            preferences[PreferenceKeys.WOMENS_SAFETY_ESCALATED] = true
+            preferences[PreferenceKeys.WOMENS_SAFETY_INCIDENT_ID] = incidentId
+        }
+    }
+
+    suspend fun clearWomensSafetyEscalation() {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferenceKeys.WOMENS_SAFETY_ESCALATED] = false
+            preferences[PreferenceKeys.WOMENS_SAFETY_INCIDENT_ID] = ""
         }
     }
 
@@ -450,8 +569,21 @@ class UserPreferencesDataStore(private val context: Context) {
     }
 
     suspend fun updateCustomEmergencyPhrases(phrases: String) {
+        val normalized = phrases.split(",").filter { it.isNotBlank() }
+            .map(com.siddesh.smsalerts.data.voice.VoiceEmergencyDetector::normalizePhrase).distinct()
+        require(normalized.size <= 12 && normalized.all(com.siddesh.smsalerts.data.voice.VoiceEmergencyDetector::validCustomPhrase)) {
+            "Use up to 12 phrases, each with 2–8 words and 3–64 letters or numbers."
+        }
+        saveEncryptedPhrases(normalized.joinToString(","))
+    }
+
+    private suspend fun saveEncryptedPhrases(phrases: String) {
+        val encrypted = android.util.Base64.encodeToString(
+            com.siddesh.smsalerts.mesh.MeshSecurity.encryptLocal(phrases.toByteArray(Charsets.UTF_8)),
+            android.util.Base64.NO_WRAP)
         context.userDataStore.edit { preferences ->
-            preferences[PreferenceKeys.CUSTOM_EMERGENCY_PHRASES] = phrases
+            preferences[PreferenceKeys.ENCRYPTED_EMERGENCY_PHRASES] = encrypted
+            preferences.remove(PreferenceKeys.CUSTOM_EMERGENCY_PHRASES)
         }
     }
 
@@ -459,7 +591,7 @@ class UserPreferencesDataStore(private val context: Context) {
         police: String,
         ambulance: String,
         fire: String,
-        womensHelpline: String = "1091",
+        womensHelpline: String = "181",
         policeEnabled: Boolean = true,
         ambulanceEnabled: Boolean = true,
         fireEnabled: Boolean = true,
@@ -525,6 +657,18 @@ class UserPreferencesDataStore(private val context: Context) {
         }
     }
 
+    suspend fun updateWomensCrisisNumber(number: String) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferenceKeys.WOMENS_CRISIS_NUMBER] = number.trim()
+        }
+    }
+
+    suspend fun updateWomensCrisisEnabled(enabled: Boolean) {
+        context.userDataStore.edit { preferences ->
+            preferences[PreferenceKeys.WOMENS_CRISIS_ENABLED] = enabled
+        }
+    }
+
     suspend fun updateEmergencyProfile(bloodGroup: String, medicalNotes: String, allergies: String) {
         context.userDataStore.edit { preferences ->
             preferences[PreferenceKeys.BLOOD_GROUP] = bloodGroup.trim()
@@ -537,6 +681,60 @@ class UserPreferencesDataStore(private val context: Context) {
         context.userDataStore.edit { preferences ->
             preferences[PreferenceKeys.LIVE_LOCATION_SHARING_ACTIVE] = active
             preferences[PreferenceKeys.ACTIVE_EMERGENCY_INCIDENT_ID] = if (active) incidentId else ""
+        }
+    }
+
+    suspend fun migrateTimerSessions() {
+        context.userDataStore.edit { p ->
+            val owner = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            if (p[PreferenceKeys.CHECK_IN_ACTIVE] == true && p[PreferenceKeys.CHECK_SESSION].isNullOrBlank()) {
+                p[PreferenceKeys.CHECK_SESSION] = java.util.UUID.randomUUID().toString()
+                p[PreferenceKeys.CHECK_OWNER] = owner
+            }
+            if (p[PreferenceKeys.WOMENS_SAFETY_ACTIVE] == true && p[PreferenceKeys.JOURNEY_SESSION].isNullOrBlank()) {
+                p[PreferenceKeys.JOURNEY_SESSION] = java.util.UUID.randomUUID().toString()
+                p[PreferenceKeys.JOURNEY_OWNER] = owner
+            }
+        }
+    }
+
+    suspend fun advanceTimer(journey: Boolean, session: String, deadline: Long, now: Long): String {
+        var result = "INACTIVE"
+        context.userDataStore.edit { p ->
+            val sessionKey = if (journey) PreferenceKeys.JOURNEY_SESSION else PreferenceKeys.CHECK_SESSION
+            val targetKey = if (journey) PreferenceKeys.WOMENS_SAFETY_TARGET_TIME else PreferenceKeys.CHECK_IN_TARGET_TIME
+            val activeKey = if (journey) PreferenceKeys.WOMENS_SAFETY_ACTIVE else PreferenceKeys.CHECK_IN_ACTIVE
+            val graceKey = if (journey) PreferenceKeys.WOMENS_SAFETY_GRACE_MINS else PreferenceKeys.CHECK_IN_GRACE_PERIOD_MINS
+            val graceActiveKey = if (journey) PreferenceKeys.WOMENS_SAFETY_GRACE_ACTIVE else PreferenceKeys.CHECK_IN_GRACE_ACTIVE
+            val escalatedKey = if (journey) PreferenceKeys.WOMENS_SAFETY_ESCALATED else PreferenceKeys.CHECK_IN_ESCALATED
+            val incidentKey = if (journey) PreferenceKeys.WOMENS_SAFETY_INCIDENT_ID else PreferenceKeys.CHECK_IN_INCIDENT_ID
+            if (session.isBlank() || p[sessionKey] != session || p[targetKey] != deadline) return@edit
+            if (p[escalatedKey] == true && p[incidentKey] == session) { result = "EXPIRED"; return@edit }
+            val phase = com.siddesh.smsalerts.service.TimerPolicy.phase(p[activeKey] == true,
+                !journey && p[PreferenceKeys.CHECK_IN_PAUSED] == true, deadline, p[graceKey] ?: 2, now)
+            result = phase.name
+            if (phase == com.siddesh.smsalerts.service.TimerPolicy.Phase.GRACE) {
+                p[graceActiveKey] = true
+                p[if (journey) PreferenceKeys.WOMENS_SAFETY_GRACE_TARGET_TIME else PreferenceKeys.CHECK_IN_GRACE_TARGET_TIME] = deadline + (p[graceKey] ?: 2) * 60_000L
+            }
+            if (phase == com.siddesh.smsalerts.service.TimerPolicy.Phase.EXPIRED) {
+                p[activeKey] = false
+                p[graceActiveKey] = false
+                p[escalatedKey] = true
+                p[incidentKey] = session
+            }
+        }
+        return result
+    }
+
+    suspend fun confirmTimer(journey: Boolean, session: String, deadline: Long) {
+        context.userDataStore.edit { p ->
+            val sk = if (journey) PreferenceKeys.JOURNEY_SESSION else PreferenceKeys.CHECK_SESSION
+            val tk = if (journey) PreferenceKeys.WOMENS_SAFETY_TARGET_TIME else PreferenceKeys.CHECK_IN_TARGET_TIME
+            if (session.isBlank() || p[sk] != session || p[tk] != deadline) return@edit
+            p[if (journey) PreferenceKeys.WOMENS_SAFETY_ACTIVE else PreferenceKeys.CHECK_IN_ACTIVE] = false
+            p[if (journey) PreferenceKeys.WOMENS_SAFETY_GRACE_ACTIVE else PreferenceKeys.CHECK_IN_GRACE_ACTIVE] = false
+            p[tk] = 0L
         }
     }
 }

@@ -16,7 +16,7 @@ import java.util.UUID
 class SecurityAuditUnitTest {
 
     @Test
-    fun `packet integrity rejects tampered coordinates`() {
+    fun `legacy packet with invented signature is rejected`() {
         val original = MeshPacket(
             version = 1,
             messageId = UUID.randomUUID().toString(),
@@ -35,7 +35,7 @@ class SecurityAuditUnitTest {
         )
 
         // Baseline integrity
-        assertTrue(MeshSecurity.verifyPacketIntegrity(original))
+        assertFalse(MeshSecurity.verifyPacketIntegrity(original))
 
         // Adversary alters coordinates in transit
         val tamperedPayload = original.getSigningPayload().replace("12.9716", "13.0000")

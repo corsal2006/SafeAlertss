@@ -45,6 +45,7 @@ fun EmergencyTriggersScreen(
     val preferences by preferencesDataStore.preferencesFlow.collectAsState(
         initial = com.siddesh.smsalerts.data.preferences.AppUserPreferences()
     )
+    val realProfile by com.siddesh.smsalerts.data.repository.UserRepository.getInstance().userProfile.collectAsState()
 
     // Hardware checks
     val isShakeSupported = remember { ShakeDetector(context) {}.isSupported() }
@@ -56,7 +57,7 @@ fun EmergencyTriggersScreen(
     ) { granted ->
         if (granted) {
             scope.launch { preferencesDataStore.updateVoiceAlert(true) }
-            Toast.makeText(context, "Voice trigger enabled. Say HELP to test.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Voice trigger enabled. Say HELP ME on Home.", Toast.LENGTH_SHORT).show()
         } else {
             scope.launch { preferencesDataStore.updateVoiceAlert(false) }
             Toast.makeText(context, "Microphone permission is required for voice commands.", Toast.LENGTH_LONG).show()
@@ -86,6 +87,7 @@ fun EmergencyTriggersScreen(
         VoiceEmergencyDetector(
             context = context,
             onEmergencyPhraseDetected = {},
+            onError = { testResultText = it; isTestingVoice = false },
             isTestMode = true,
             onTestResult = { spoken, matched ->
                 testResultText = spoken
@@ -93,9 +95,20 @@ fun EmergencyTriggersScreen(
             }
         )
     }
+    val voiceStatus by voiceDetector.status.collectAsState()
+    LaunchedEffect(voiceStatus) { isTestingVoice = voiceDetector.isListening }
 
-    DisposableEffect(Unit) {
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) {
+                voiceDetector.stopListening()
+                isTestingVoice = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             voiceDetector.stopListening()
         }
     }
@@ -130,7 +143,8 @@ fun EmergencyTriggersScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // INFO BANNER
@@ -241,14 +255,14 @@ fun EmergencyTriggersScreen(
                         // Required Shakes Selection
                         Text(
                             text = "REQUIRED SHAKES: ${preferences.requiredShakes}",
-                            color = TextMuted,
+                            color = TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(3, 4, 5).forEach { count ->
+                            listOf(5).forEach { count ->
                                 FilterChip(
                                     selected = preferences.requiredShakes == count,
                                     onClick = {
@@ -265,7 +279,7 @@ fun EmergencyTriggersScreen(
                         // Shake Cooldown
                         Text(
                             text = "TRIGGER COOLDOWN: ${preferences.shakeCooldownSeconds}s",
-                            color = TextMuted,
+                            color = TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp
@@ -290,7 +304,7 @@ fun EmergencyTriggersScreen(
 
                         Text(
                             text = "SHAKE CALIBRATION / PRACTICE MODE",
-                            color = TextMuted,
+                            color = TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp
@@ -308,9 +322,9 @@ fun EmergencyTriggersScreen(
                         var practiceStatus by remember { mutableStateOf("Tap below to start practice calibration") }
                         val practiceDetector = remember {
                             com.siddesh.smsalerts.data.sensor.ShakeDetector(context) {
-                                practiceCount++
+                                practiceCount = 5
                                 com.siddesh.smsalerts.utils.HapticUtils.vibrateTick(context)
-                                practiceStatus = "Shake registered! Count: $practiceCount / ${preferences.requiredShakes}"
+                                practiceStatus = "Five qualifying shakes detected"
                                 if (practiceCount >= preferences.requiredShakes) {
                                     practiceStatus = "SUCCESS: Full ${preferences.requiredShakes}-shake sequence detected! (No alerts sent)"
                                 }
@@ -320,7 +334,7 @@ fun EmergencyTriggersScreen(
                         }
 
                         DisposableEffect(isPracticeActive) {
-                            if (isPracticeActive) {
+                            if (isPracticeActive && !preferences.shakeToAlertEnabled) {
                                 practiceCount = 0
                                 practiceStatus = "Listening... Shake phone firmly now!"
                                 practiceDetector.startListening()
@@ -349,7 +363,8 @@ fun EmergencyTriggersScreen(
                                 OutlinedButton(
                                     onClick = {
                                         com.siddesh.smsalerts.utils.HapticUtils.vibrateTick(context)
-                                        isPracticeActive = !isPracticeActive
+                                        if (preferences.shakeToAlertEnabled) practiceStatus = "Disable Shake SOS before practice to avoid a real emergency."
+                                        else isPracticeActive = !isPracticeActive
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(8.dp)
@@ -382,7 +397,7 @@ fun EmergencyTriggersScreen(
                                 )
                                 Text(
                                     text = if (isVoiceSupported) {
-                                        "Say HELP, HELP ME, or EMERGENCY to start emergency dispatch."
+                                        "Say help me while Home is visible. Uses your microphone; if on-device recognition is unavailable, your phone's speech provider may process audio online."
                                     } else {
                                         "Speech recognition is unavailable on this device."
                                     },
@@ -417,7 +432,7 @@ fun EmergencyTriggersScreen(
                     // Configured Phrases Chips
                     Text(
                         text = "EMERGENCY TRIGGER PHRASES",
-                        color = TextMuted,
+                        color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.8.sp
@@ -442,7 +457,10 @@ fun EmergencyTriggersScreen(
                                                     .map { it.trim() }
                                                     .filter { it.isNotBlank() && it != phrase }
                                                     .joinToString(",")
-                                                scope.launch { preferencesDataStore.updateCustomEmergencyPhrases(updated) }
+                                                scope.launch {
+                                                    try { preferencesDataStore.updateCustomEmergencyPhrases(updated) }
+                                                    catch (e: Exception) { testResultText = "Phrase was not removed: ${e.message}" }
+                                                }
                                             }
                                         },
                                         label = { Text(if (isCustom) "$phrase ✕" else phrase, fontSize = 11.sp) },
@@ -455,11 +473,10 @@ fun EmergencyTriggersScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Safe Voice Test Mode
-                    Row(
+                    // Full-width controls remain readable with large fonts and the keyboard.
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedButton(
                             onClick = {
@@ -470,14 +487,15 @@ fun EmergencyTriggersScreen(
                                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                                         voiceDetector.setCustomPhrases(preferences.customEmergencyPhrases.split(","))
                                         voiceDetector.startListening()
-                                        isTestingVoice = true
-                                        testResultText = "Listening... say an emergency phrase"
+                                        isTestingVoice = voiceDetector.isListening
+                                        testResultText = voiceDetector.status.value
                                         testMatchedPhrase = null
                                     } else {
                                         audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                     }
                                 }
                             },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF38BDF8))
                         ) {
                             Icon(
@@ -491,6 +509,7 @@ fun EmergencyTriggersScreen(
 
                         OutlinedButton(
                             onClick = { showAddPhraseDialog = true },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -499,6 +518,8 @@ fun EmergencyTriggersScreen(
                         }
                     }
 
+                    Text(voiceStatus, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                    if (preferences.phraseStorageError.isNotBlank()) Text(preferences.phraseStorageError, color = EmergencyRed)
                     if (isTestingVoice || testResultText.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
@@ -529,15 +550,68 @@ fun EmergencyTriggersScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Privacy: Safe Alerts uses on-device Android speech recognition only when active. Microphone audio is never recorded to disk or uploaded.",
-                        color = TextMuted,
+                        text = "Privacy: Voice recognition uses your microphone on Home or during a speech test. On-device recognition is preferred. Otherwise your phone's speech provider may send audio to its servers under its own privacy policy. SafeAlerts does not save raw microphone recordings. Turn off Voice Trigger to stop automatic listening on Home.",
+                        color = TextSecondary,
                         fontSize = 11.sp,
                         lineHeight = 15.sp
                     )
                 }
             }
 
-            // 4. OFFLINE BLUETOOTH MESH NETWORK
+            // 4. EMERGENCY SMS PREVIEW (Configurable template)
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Sms, contentDescription = null, tint = StatusSuccess, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Emergency SMS Preview",
+                            color = TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Actual message template dispatched to your emergency contacts when SOS is triggered:",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
+                            .padding(10.dp)
+                    ) {
+                        val previewMsg = remember(realProfile, preferences.policeNumber, preferences.policeEnabled, preferences.womensHelplineNumber, preferences.womensHelplineEnabled) {
+                            com.siddesh.smsalerts.utils.EmergencyMessageFormatter.formatEmergencyMessage(
+                                userName = realProfile?.fullName.orEmpty(),
+                                customMessage = null,
+                                policeNumber = preferences.policeNumber,
+                                isPoliceEnabled = preferences.policeEnabled,
+                                womensHelplineNumber = preferences.womensHelplineNumber,
+                                isWomensHelplineEnabled = preferences.womensHelplineEnabled,
+                                latitude = null,
+                                longitude = null,
+                                accuracyMeters = null,
+                                secureLiveTrackingUrl = null,
+                                age = realProfile?.age
+                            )
+                        }
+                        Text(
+                            text = previewMsg,
+                            color = TextPrimary,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+
+            // 5. OFFLINE BLUETOOTH MESH NETWORK
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -600,6 +674,7 @@ fun EmergencyTriggersScreen(
                     EmergencyServiceItem(
                         title = "1. Police / All Emergencies (ERSS)",
                         number = preferences.policeNumber,
+                        scopeNotes = "India-wide unified emergency response (MHA ERSS 112)",
                         icon = Icons.Default.Security,
                         isEnabled = preferences.policeEnabled,
                         onToggle = { enabled ->
@@ -610,10 +685,12 @@ fun EmergencyTriggersScreen(
                             editingServiceNumber = preferences.policeNumber
                         },
                         onCall = {
-                            emergencyServicesManager.initiateEmergencyCall("Police", preferences.policeNumber)
+                            val res = emergencyServicesManager.initiateEmergencyCall("Police (ERSS)", preferences.policeNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         },
                         onTestDialer = {
-                            emergencyServicesManager.launchSafeTestDialer("Police", preferences.policeNumber)
+                            val res = emergencyServicesManager.launchSafeTestDialer("Police (ERSS)", preferences.policeNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     )
 
@@ -623,6 +700,7 @@ fun EmergencyTriggersScreen(
                     EmergencyServiceItem(
                         title = "2. Ambulance / Medical Response",
                         number = preferences.ambulanceNumber,
+                        scopeNotes = "Emergency medical service (108 Maharashtra / nationwide)",
                         icon = Icons.Default.LocalHospital,
                         isEnabled = preferences.ambulanceEnabled,
                         onToggle = { enabled ->
@@ -633,10 +711,12 @@ fun EmergencyTriggersScreen(
                             editingServiceNumber = preferences.ambulanceNumber
                         },
                         onCall = {
-                            emergencyServicesManager.initiateEmergencyCall("Ambulance", preferences.ambulanceNumber)
+                            val res = emergencyServicesManager.initiateEmergencyCall("Ambulance", preferences.ambulanceNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         },
                         onTestDialer = {
-                            emergencyServicesManager.launchSafeTestDialer("Ambulance", preferences.ambulanceNumber)
+                            val res = emergencyServicesManager.launchSafeTestDialer("Ambulance", preferences.ambulanceNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     )
 
@@ -644,8 +724,9 @@ fun EmergencyTriggersScreen(
 
                     // 3. Fire Brigade (101)
                     EmergencyServiceItem(
-                        title = "3. Fire Brigade",
+                        title = "3. Fire & Rescue Services",
                         number = preferences.fireNumber,
+                        scopeNotes = "National fire brigade directory (101)",
                         icon = Icons.Default.Warning,
                         isEnabled = preferences.fireEnabled,
                         onToggle = { enabled ->
@@ -656,39 +737,70 @@ fun EmergencyTriggersScreen(
                             editingServiceNumber = preferences.fireNumber
                         },
                         onCall = {
-                            emergencyServicesManager.initiateEmergencyCall("Fire Brigade", preferences.fireNumber)
+                            val res = emergencyServicesManager.initiateEmergencyCall("Fire Brigade", preferences.fireNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         },
                         onTestDialer = {
-                            emergencyServicesManager.launchSafeTestDialer("Fire Brigade", preferences.fireNumber)
+                            val res = emergencyServicesManager.launchSafeTestDialer("Fire Brigade", preferences.fireNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = CardBorder)
 
-                    // 4. Women's Helpline (1091 / 181)
+                    // 4. Women Helpline (181)
                     EmergencyServiceItem(
-                        title = "4. Women's Safety & Helpline",
+                        title = "4. Women Helpline (MWCD)",
                         number = preferences.womensHelplineNumber,
+                        scopeNotes = "Government Women Helpline (Ministry of Women & Child Development - 181)",
                         icon = Icons.Default.Face,
                         isEnabled = preferences.womensHelplineEnabled,
                         onToggle = { enabled ->
                             scope.launch { preferencesDataStore.updateWomensHelplineEnabled(enabled) }
                         },
                         onEdit = {
-                            editingServiceType = "Women's Safety"
+                            editingServiceType = "Women Helpline"
                             editingServiceNumber = preferences.womensHelplineNumber
                         },
                         onCall = {
-                            emergencyServicesManager.initiateEmergencyCall("Women's Safety", preferences.womensHelplineNumber)
+                            val res = emergencyServicesManager.initiateEmergencyCall("Women Helpline", preferences.womensHelplineNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         },
                         onTestDialer = {
-                            emergencyServicesManager.launchSafeTestDialer("Women's Safety", preferences.womensHelplineNumber)
+                            val res = emergencyServicesManager.launchSafeTestDialer("Women Helpline", preferences.womensHelplineNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = CardBorder)
 
-                    // 5. Personal Emergency Contacts
+                    // 5. Women Crisis Response (1091)
+                    EmergencyServiceItem(
+                        title = "5. Women Crisis Response (Police)",
+                        number = preferences.womensCrisisNumber,
+                        scopeNotes = "Police Women Cell & district crisis helpline (1091 Maharashtra)",
+                        icon = Icons.Default.Security,
+                        isEnabled = preferences.womensCrisisEnabled,
+                        onToggle = { enabled ->
+                            scope.launch { preferencesDataStore.updateWomensCrisisEnabled(enabled) }
+                        },
+                        onEdit = {
+                            editingServiceType = "Women Crisis"
+                            editingServiceNumber = preferences.womensCrisisNumber
+                        },
+                        onCall = {
+                            val res = emergencyServicesManager.initiateEmergencyCall("Women Crisis Response", preferences.womensCrisisNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        onTestDialer = {
+                            val res = emergencyServicesManager.launchSafeTestDialer("Women Crisis Response", preferences.womensCrisisNumber)
+                            android.widget.Toast.makeText(context, res.message, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = CardBorder)
+
+                    // 6. Personal Emergency Contacts
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -699,7 +811,7 @@ fun EmergencyTriggersScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "5. Personal Emergency Contacts",
+                                    text = "6. Personal Emergency Contacts",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
                                     color = TextPrimary
@@ -759,7 +871,8 @@ fun EmergencyTriggersScreen(
                                 onClick = {
                                     scope.launch { preferencesDataStore.updateCountdownDuration(sec) }
                                 },
-                                label = { Text("$sec seconds") },
+                                label = { Text("${sec}s", maxLines = 1) },
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                                 colors = chipColors()
                             )
                         }
@@ -814,18 +927,20 @@ fun EmergencyTriggersScreen(
                 },
                 title = { Text("Add Custom Trigger Phrase", fontWeight = FontWeight.Bold, color = TextPrimary) },
                 text = {
-                    Column {
+                    Column(Modifier.imePadding().verticalScroll(rememberScrollState())) {
                         Text(
-                            text = "Enter a distinct phrase to trigger emergency dispatch when spoken (e.g., 'CODE RED', 'SAFEALERT SOS').",
+                            text = "Enter a distinct phrase to trigger emergency dispatch when spoken (e.g., 'CODE RED', 'SafeAlerts SOS').",
                             fontSize = 12.sp,
                             color = TextSecondary
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         OutlinedTextField(
                             value = newPhraseText,
-                            onValueChange = { newPhraseText = it },
+                            onValueChange = { newPhraseText = it.take(64) },
                             placeholder = { Text("e.g. CODE RED") },
                             singleLine = true,
+                            isError = newPhraseText.isNotBlank() && !VoiceEmergencyDetector.validCustomPhrase(newPhraseText),
+                            supportingText = { Text("Use 2–8 distinct words, up to 64 characters. Phrases apply while voice is enabled.") },
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EmergencyRed,
@@ -838,7 +953,7 @@ fun EmergencyTriggersScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            val clean = newPhraseText.trim().uppercase()
+                            val clean = VoiceEmergencyDetector.normalizePhrase(newPhraseText)
                             if (clean.isNotBlank()) {
                                 val current = preferences.customEmergencyPhrases.split(",")
                                     .map { it.trim() }
@@ -847,13 +962,17 @@ fun EmergencyTriggersScreen(
                                 if (!current.contains(clean)) {
                                     current.add(clean)
                                     scope.launch {
-                                        preferencesDataStore.updateCustomEmergencyPhrases(current.joinToString(","))
+                                        try { preferencesDataStore.updateCustomEmergencyPhrases(current.joinToString(",")) }
+                                        catch (e: Exception) { testResultText = "Phrase was not saved: ${e.message}" }
                                     }
                                 }
                             }
                             showAddPhraseDialog = false
                             newPhraseText = ""
                         },
+                        enabled = VoiceEmergencyDetector.validCustomPhrase(newPhraseText) &&
+                            VoiceEmergencyDetector.normalizePhrase(newPhraseText) !in (VoiceEmergencyDetector.DEFAULT_EMERGENCY_PHRASES + preferences.customEmergencyPhrases.split(",")) &&
+                            preferences.customEmergencyPhrases.split(",").filter { it.isNotBlank() }.size < 12,
                         colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed)
                     ) {
                         Text("Add Phrase")
@@ -873,6 +992,9 @@ fun EmergencyTriggersScreen(
         }
 
         if (editingServiceType != null) {
+            val clean = editingServiceNumber.trim()
+            val isValidNumber = clean.matches(Regex("^[+]?[0-9]{3,15}$"))
+
             AlertDialog(
                 onDismissRequest = {
                     editingServiceType = null
@@ -882,7 +1004,7 @@ fun EmergencyTriggersScreen(
                 text = {
                     Column {
                         Text(
-                            text = "Set the regional emergency dispatch number for $editingServiceType. Standard national defaults in India: 112 (National ERSS/Police), 108 (Ambulance), 101 (Fire), 1091 (Women's Helpline).",
+                            text = "Enter verified dispatch number for $editingServiceType. Standard format: 3-15 digits (e.g. 112, 108, 101, 181, 1091).",
                             fontSize = 12.sp,
                             color = TextSecondary
                         )
@@ -892,32 +1014,43 @@ fun EmergencyTriggersScreen(
                             onValueChange = { editingServiceNumber = it },
                             placeholder = { Text("Enter emergency phone number") },
                             singleLine = true,
+                            isError = clean.isNotBlank() && !isValidNumber,
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EmergencyRed,
                                 focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                                unfocusedTextColor = TextPrimary,
+                                errorBorderColor = StatusError
                             )
                         )
+                        if (clean.isNotBlank() && !isValidNumber) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Please enter a valid phone number (3-15 digits, optional + prefix).",
+                                color = StatusError,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                 },
                 confirmButton = {
                     Button(
                         onClick = {
-                            val clean = editingServiceNumber.trim()
-                            if (clean.isNotBlank()) {
+                            if (isValidNumber) {
                                 scope.launch {
                                     when (editingServiceType) {
                                         "Police" -> preferencesDataStore.updatePoliceNumber(clean)
                                         "Ambulance" -> preferencesDataStore.updateAmbulanceNumber(clean)
                                         "Fire Brigade" -> preferencesDataStore.updateFireNumber(clean)
-                                        "Women's Safety" -> preferencesDataStore.updateWomensHelplineNumber(clean)
+                                        "Women Helpline", "Women's Safety" -> preferencesDataStore.updateWomensHelplineNumber(clean)
+                                        "Women Crisis" -> preferencesDataStore.updateWomensCrisisNumber(clean)
                                     }
                                 }
+                                editingServiceType = null
+                                editingServiceNumber = ""
                             }
-                            editingServiceType = null
-                            editingServiceNumber = ""
                         },
+                        enabled = isValidNumber,
                         colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed)
                     ) {
                         Text("Save Number")
@@ -942,6 +1075,7 @@ fun EmergencyTriggersScreen(
 private fun EmergencyServiceItem(
     title: String,
     number: String,
+    scopeNotes: String = "",
     icon: ImageVector,
     isEnabled: Boolean,
     onToggle: (Boolean) -> Unit,
@@ -956,20 +1090,34 @@ private fun EmergencyServiceItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                Icon(icon, contentDescription = null, tint = if (isEnabled) EmergencyRed else TextMuted, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = null, tint = if (isEnabled) EmergencyRed else TextSecondary, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Number: $number", fontSize = 12.sp, color = TextSecondary)
+                        Text("Number: $number", fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit Number",
-                            tint = Color(0xFF38BDF8),
+                        Box(
                             modifier = Modifier
-                                .size(14.dp)
-                                .clickable { onEdit() }
+                                .size(28.dp)
+                                .clickable { onEdit() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Number",
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
+                    if (scopeNotes.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = scopeNotes,
+                            fontSize = 11.sp,
+                            color = TextSecondary.copy(alpha = 0.8f),
+                            lineHeight = 14.sp
                         )
                     }
                 }
@@ -989,19 +1137,23 @@ private fun EmergencyServiceItem(
         ) {
             OutlinedButton(
                 onClick = onTestDialer,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
             ) {
                 Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(14.dp), tint = TextSecondary)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Test Dialer (Safe)", fontSize = 11.sp, color = TextPrimary)
+                Text("Test Dialer (Safe)", fontSize = 11.sp, color = TextPrimary, maxLines = 1)
             }
             Button(
                 onClick = onCall,
                 enabled = isEnabled,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = EmergencyRed,
                     disabledContainerColor = SurfaceDark
@@ -1009,7 +1161,7 @@ private fun EmergencyServiceItem(
             ) {
                 Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Call Now", fontSize = 11.sp, color = Color.White)
+                Text("Call Now", fontSize = 11.sp, color = Color.White, maxLines = 1)
             }
         }
     }

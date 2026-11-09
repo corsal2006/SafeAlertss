@@ -10,7 +10,7 @@ import org.junit.Test
 class TrustedCircleUnitTest {
 
     @Test
-    fun trustedCircleMember_locationStaleness_freshWithin15Minutes() {
+    fun trustedCircleMember_locationStaleness_freshWithinOneMinute() {
         val now = System.currentTimeMillis()
         val member = TrustedCircleMember(
             name = "Priya Sharma",
@@ -19,14 +19,14 @@ class TrustedCircleUnitTest {
             lastLatitude = 12.9716,
             lastLongitude = 77.5946,
             lastAccuracyMeters = 8.5f,
-            lastLocationTimestamp = now - (5 * 60 * 1000L) // 5 minutes ago
+            lastLocationTimestamp = now - 15_000L // one target update interval ago
         )
 
-        assertFalse("Location from 5 minutes ago should be fresh", member.isLocationStale)
+        assertFalse("Location from 15 seconds ago should be fresh", member.isLocationStale)
     }
 
     @Test
-    fun trustedCircleMember_locationStaleness_staleAfter15Minutes() {
+    fun trustedCircleMember_locationStaleness_staleAfterOneMinute() {
         val now = System.currentTimeMillis()
         val member = TrustedCircleMember(
             name = "Rahul Verma",
@@ -35,10 +35,10 @@ class TrustedCircleUnitTest {
             lastLatitude = 12.9716,
             lastLongitude = 77.5946,
             lastAccuracyMeters = 15.0f,
-            lastLocationTimestamp = now - (20 * 60 * 1000L) // 20 minutes ago
+            lastLocationTimestamp = now - 61_000L
         )
 
-        assertTrue("Location older than 15 minutes should be flagged as stale", member.isLocationStale)
+        assertTrue("Location older than one minute should be flagged as stale", member.isLocationStale)
     }
 
     @Test

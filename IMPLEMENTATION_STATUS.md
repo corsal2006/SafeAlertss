@@ -5,8 +5,8 @@
 **Platform:** Native Android (Kotlin + Jetpack Compose Material 3)  
 **SDK Targets:** minSdk 24 (Android 7.0), targetSdk 34, compileSdk 34 (Android 14)  
 **Build & Test Status:**  
-- **Unit Tests:** `BUILD SUCCESSFUL` (100% pass across all unit test suites)
-- **Debug APK:** Verified compiled output at `app/build/outputs/apk/debug/app-debug.apk` (23,285,836 bytes, Last Modified: 17-10-2026 13:05)
+- **Unit Tests:** `BUILD SUCCESSFUL` (100% pass across all unit test suites including `ProductionFeatureCompletionTest`)
+- **Debug APK:** Verified compiled output at `app/build/outputs/apk/debug/app-debug.apk` (BUILD SUCCESSFUL)
 
 ---
 
@@ -158,3 +158,120 @@ All automated test suites executed via Gradle daemonless runner:
 - **Status:** `BUILD SUCCESSFUL in 30s` (Exit Code 0)
 - **Artifact:** `C:\Users\megha\SafeAlertss\app\build\outputs\apk\debug\app-debug.apk`
 - **Binary Size:** `23,285,836 bytes` (Verified on filesystem)
+
+---
+
+## 6. Google Maps SDK Integration & Repeated Crash Resolution Report
+
+### A. Root Causes of App Closures & Crashes
+1. **Root NavHost Backstack Destruction (`NavGraph.kt`):**
+   - In `NavGraph.kt`, the `SignedOut` destination executed `popUpTo(0) { inclusive = true }`. On any back navigation or signed-out redirection, this popped the root NavHost container from the Activity, causing the app to silently close.
+   - **Fix:** Fixed to `popUpTo(Screen.Welcome.route) { inclusive = false }` with `launchSingleTop = true`.
+2. **Unhandled Exception in Mesh Queue on Main Thread (`MeshStoreAndForwardQueue.kt`):**
+   - Opening chat called `MeshSecurity.encrypt/decrypt()`, which threw `IllegalArgumentException("Configure a private nearby group first")` whenever an unconfigured device initialized.
+   - **Fix:** Updated to use `MeshSecurity.encryptLocal()` and `decryptLocal()`, utilizing the device's native AndroidKeyStore hardware-backed master key.
+3. **ART Compiler Instruction Limit Overflow (`WomensSafetyScreen.kt`):**
+   - The monolithic `@Composable` method was over 1,300 lines, generating `Method exceeds compiler instruction limit: 24700 in void WomensSafetyScreenKt$WomensSafetyScreen$10.invoke` in ART, triggering runtime ANRs.
+   - **Fix:** Refactored into modular sub-composables (`WomensSafetyActiveCard`, `DestinationSearchCard`, `DurationSelectorCard`, `GracePeriodSelectorCard`, `JourneyOptionsCard`).
+
+### B. Embedded Google Maps SDK Implementation
+- Added official Google Maps SDK dependencies: `com.google.android.gms:play-services-maps:18.2.0` and `com.google.maps.android:maps-compose:4.4.1`.
+- Added `<meta-data android:name="com.google.android.geo.API_KEY" android:value="${MAPS_API_KEY}" />` to `AndroidManifest.xml`.
+- Created `SafeAlertGoogleMap.kt` providing a pure Compose embedded Google Map with:
+  - Gesture support (zooming, panning, rotation, tilt)
+  - Real current user GPS fix and custom location recenter FAB button
+  - Map click coordinate picking for destinations
+  - Destination marker with title annotation
+  - Polyline route drawing
+  - Trusted Circle member markers with online/offline/danger states
+- Integrated embedded Google Map directly into:
+  - **Women's Safety Journey** (Setup mode & Active Journey mode)
+  - **Trusted Circle** (`CircleMap` radar with real member pins and danger alerts)
+
+### C. Google Cloud Platform Key & Billing Analysis (₹0 Budget)
+- **Maps API Key:** Configured via `local.properties` (and merged manifest placeholder).
+- **Project:** `663925742780` (`smselerts`)
+- **Key Fingerprint:** `82:A4:CD:1A:26:D5:B5:35:BE:CC:F3:8A:15:7C:2F:E0:F9:40:9D:FB`
+- **Google Cloud Console Action Required (Zero-Cost):**
+  - In Google Cloud Console, enable **"Maps SDK for Android"** under APIs & Services for project `663925742780`.
+  - **Cost:** Maps SDK for Android offers **unlimited free map loads on native Android mobile devices ($0 cost)**. It does not require Firebase Blaze or paid billing.
+  - For routing and geocoding, SafeAlerts employs `OsmRoutingService` to calculate real road routes and fetch place coordinates with **zero billing requirement**, preventing any billing account exposure.
+
+---
+
+## 7. Post-SOS Home Recovery, Incident Screen Map & Final Physical Verification
+
+### A. Post-SOS Blank Home Screen Resolution (P0 & P7)
+1. **Root Cause:**
+   - When an SOS completed or was cancelled, `emergencyManager.stage` remained in `SosStage.Cancelled` or `SosStage.Resolved`.
+   - Subsequent navigation to `SosCountdownScreen` immediately re-triggered `onNavigateBack()`.
+   - `HomeScreen` lacked active incident observation. Returning to Home post-SOS showed no ongoing emergency banner or resolution actions, leaving the user without recovery controls.
+2. **Implementation & Fix:**
+   - Added `activeIncident` StateFlow to `EmergencyManager`, backed by durable atomic disk persistence in `EmergencyOutbox.getActiveIncidents()`.
+   - Added `homeViewModel.resetSosStage()` to return the stage to `SosStage.Idle` on countdown back-navigation.
+   - Built a high-priority, pulsing red **Active Emergency Incident Card** on `HomeScreen`:
+     - Displays live incident category, state, timestamp, and message.
+     - Provides **[VIEW INCIDENT]** button (deep-links to `incident/{id}` with live dispatch outcomes and GPS map).
+     - Provides **[I'M SAFE (RESOLVE)]** button (resolves the incident across outbox, cloud, stops location sharing, and restores Home to normal ready state).
+   - Upgraded `IncidentScreen.kt` from obsolete canvas `FreeMap` to embedded `SafeAlertGoogleMap`, ensuring full consistency across Women's Safety, Trusted Circle, and Incident screens.
+
+### B. Women's Safety Empty Red Alert Banner Fix (P2)
+1. **Root Cause:**
+   - In `WomensSafetyManager.kt`, `_operationError` was initialized to `""` (empty string).
+   - In `WomensSafetyScreen.kt`, `operationError?.let { err -> ... }` evaluated true for empty string, rendering an empty red warning banner with only an icon and no text.
+2. **Fix:**
+   - Initialized `_operationError = MutableStateFlow<String?>(null)`.
+   - Added `clearOperationError()` method and dismiss button.
+   - Guarded banner with `if (!operationError.isNullOrBlank())`.
+
+### C. Physical Device Verification (`10BEBJ0X980020A`)
+- **Unit Tests:** `testDebugUnitTest` executed 28 tasks — `BUILD SUCCESSFUL` (100% pass).
+- **Compilation:** `compileDebugKotlin` and `assembleDebug` executed 41 tasks — `BUILD SUCCESSFUL`.
+- **Installation:** Streamed install of `app-debug.apk` onto device `10BEBJ0X980020A` — `Success`.
+- **Live SOS Execution:**
+  - Real SOS triggered on physical device.
+  - GPS fix acquired: `19.01525, 73.0977617 (accuracy 42 m)`.
+  - Incident saved to durable outbox and synced to cloud (`CLOUD: SYNCED`, `BLE_MESH: QUEUED`).
+  - Navigated back to Home: **App remained fully usable with zero crash or blank screen**.
+  - Persistent **Active Emergency Incident Card** rendered at top of Home with **[VIEW INCIDENT]** and **[I'M SAFE (RESOLVE)]** controls.
+  - Embedded Google Map rendered on Women's Safety, Trusted Circle, and Incident screens.
+
+---
+
+## 8. Critical UI Repair, Google Places API Integration & Verification (Latest Pass)
+
+### A. Home Screen UI Overhaul (Priority 1)
+1. **Active Emergency Card Layout Repaired:**
+   - **Root Cause of Vertical `ACTIVE` Text:** In `HomeScreen.kt`, the inner header `Row` contained an unweighted title `Row` and a trailing `Text(incident.state)`. Because the unweighted title took almost all available card width, `incident.state` was allocated a width of barely a single character (~10-15px). This caused the letters `A`, `C`, `T`, `I`, `V`, `E` to wrap one-by-one vertically along the card's right border.
+   - **Fix:** Redesigned the Active Emergency Card layout:
+     - Gave the title column a flexible `Modifier.weight(1f)`.
+     - Placed the state into a dedicated badge/pill with `softWrap = false`, `maxLines = 1`, and bounded padding.
+     - Wrapped the card height dynamically to content, eliminating excessive dead space.
+     - Added icons (`Visibility` and `CheckCircle`) to `VIEW INCIDENT` and `I'M SAFE (RESOLVE)` buttons with standard 44dp touch targets.
+2. **Contact Configuration Warning Repaired:**
+   - **Root Cause:** In `HomeViewModel.kt`, `recomputeReadiness()` hardcoded `val isReady = false`. As a result, the Home screen permanently warned `"Action required • Configure contacts"` in amber even when contacts were already fully configured.
+   - **Fix:** Updated `recomputeReadiness()` to check `contactsCount > 0`. If contacts are present and location is ready, status displays `"System active • Ready for emergency"` in green.
+3. **Speech Recognition "No speech recognized" Permanent Error Repaired:**
+   - **Root Cause:** In `VoiceEmergencyDetector.kt`, normal ambient timeouts (`ERROR_NO_MATCH`, `ERROR_SPEECH_TIMEOUT`) set `_status.value = "No speech recognized"`. In `HomeScreen.kt`, this was displayed directly above the greeting as unstyled text, appearing as a permanent system defect.
+   - **Fix:** `VoiceEmergencyDetector.onError` now resets routine timeouts back to `"Listening: say \"help me\""`. In `HomeScreen.kt`, the voice indicator is rendered as an elegant, non-intrusive status pill with a mic icon only when voice alerts are enabled.
+4. **SOS Button Debounce & Re-trigger Guard:**
+   - Added a 2-second timestamp debounce to the main SOS button.
+   - If an incident is already active, tapping the SOS button directs the user immediately to `onNavigateToIncident(incidentId)` rather than spawning uncontrolled duplicate emergency incidents.
+
+### B. Google Places API (New) Destination Search (Priority 3 & 4)
+1. **API Key Verification:**
+   - Tested provided key `AIzaSyAh0YUsLEXwXH1hqXGligRZEhP3209roVc`.
+   - Live query verified against Google Places API (New) (`https://places.googleapis.com/v1/places:autocomplete`):
+     - `Places (New) SUCCESS! Suggestions found: 5`
+     - Successfully resolved place predictions (e.g. `Gateway Of India, Apollo Bandar, Colaba, Mumbai`) to exact coordinates (`18.9219841, 72.8346543`) via `https://places.googleapis.com/v1/places/{placeId}`.
+2. **Implementation:**
+   - Built `GooglePlacesSearchService.kt` to perform real autocomplete and coordinate resolution using `BuildConfig.MAPS_API_KEY`.
+   - Wired `GooglePlacesSearchService.searchDestinations(query)` into `WomensSafetyScreen.kt` with debouncing (500ms).
+   - Maintained seamless zero-cost fallback to Nominatim in case of network disconnects or quota limits.
+
+### C. Build & Automated Test Suite Verification
+- **Gradle Compilation:** `.\gradlew.bat assembleDebug` — `BUILD SUCCESSFUL` (41 tasks, 0 errors).
+- **Unit Test Suite:** `.\gradlew.bat testDebugUnitTest` — `BUILD SUCCESSFUL` (28 tasks, 100% pass rate).
+- **New Test Coverage:** Added `GooglePlacesSearchTest.kt` and `HomeReadinessAndIncidentTest.kt`.
+
+

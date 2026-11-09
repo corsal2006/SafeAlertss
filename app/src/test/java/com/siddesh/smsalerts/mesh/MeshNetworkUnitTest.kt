@@ -142,7 +142,7 @@ class MeshNetworkUnitTest {
             maxHops = 5,
             signature = "sig_valid"
         )
-        assertTrue(MeshSecurity.verifyPacketIntegrity(validPacket, now))
+        assertFalse("Legacy packets with arbitrary signatures must be rejected", MeshSecurity.verifyPacketIntegrity(validPacket, now))
 
         // Corrupted packet: wrong version
         assertFalse(MeshSecurity.verifyPacketIntegrity(validPacket.copy(version = 99), now))

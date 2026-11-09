@@ -1,64 +1,294 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function deletedIncident(uid, id) {
+      return exists(/databases/$(database)/documents/users/$(uid)/deleted_incidents/$(id));
     }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function endedOrMissing(path) {
+      return !exists(path) || get(path).data.status in ['RESOLVED','CANCELLED','Resolved','Cancelled'];
     }
-
-    // User profile document: users/{userId}
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
-
-      // Trusted Contacts sub-collection: users/{userId}/trustedContacts/{contactId}
-      match /trustedContacts/{contactId} {
-        allow read, write, delete: if isOwner(userId);
+    function memberAccount() { return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+    function pairId(a, b) { return hashing.sha256(a < b ? a + ':' + b : b + ':' + a).toHexString().lower(); }
+    function ticket(hash) {
+      let t = get(/databases/$(database)/documents/spark_circle_lookups/$(request.auth.uid)).data;
+      return memberAccount() && t.codeHash == hash && t.requestedAt > request.time - duration.value(1, 'm');
+    }
+    function activeCode(hash) {
+      let c = get(/databases/$(database)/documents/spark_circle_codes/$(hash)).data;
+      return c.revoked == false && c.createdAt + duration.value(15, 'm') > request.time
+        && get(/databases/$(database)/documents/spark_circle_code_owners/$(c.ownerUid)).data.codeHash == hash;
+    }
+    function budget(limit) {
+      let n = request.resource.data;
+      return n.count is int && n.count >= 1 && n.count <= limit && n.windowStart is timestamp
+        && ((resource == null
+             && n.count == 1 && n.windowStart == request.time)
+          || (resource != null && ((resource.data.windowStart <= request.time - duration.value(15, 'm')
+                 && n.count == 1 && n.windowStart == request.time)
+            || (resource.data.windowStart > request.time - duration.value(15, 'm')
+                 && n.count == resource.data.count + 1 && n.windowStart == resource.data.windowStart))));
+    }
+    function accepted(relationId, a, b, version) {
+      let r = get(/databases/$(database)/documents/circle_relationships/$(relationId)).data;
+      return r.status == 'ACCEPTED' && a != b && a in r.participants && b in r.participants && version == r.createdAt;
+    }
+    function canViewLocation(uid) {
+      let grant = get(/databases/$(database)/documents/users/$(uid)/circle_members/$(request.auth.uid)).data;
+      return signedIn() && grant.shareEnabled == true && grant.expiresAt > request.time
+        && accepted(grant.relationId, uid, request.auth.uid, grant.relationshipCreatedAt);
+    }
+    match /public_profiles/{uid} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create, update: if owner(uid) && request.resource.data.keys().hasOnly(['name', 'photoUrl'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100;
+      allow delete: if owner(uid);
+    }
+    match /spark_circle_code_owners/{uid} {
+      allow get: if owner(uid);
+      allow list, delete: if false;
+      allow create, update: if owner(uid) && memberAccount()
+        && request.resource.data.keys().hasOnly(['code','codeHash','issuedAt','windowStart','count'])
+        && request.resource.data.code.matches('^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$')
+        && request.resource.data.codeHash == hashing.sha256(request.resource.data.code).toHexString().lower()
+        && request.resource.data.issuedAt == request.time && budget(10)
+        && getAfter(/databases/$(database)/documents/spark_circle_codes/$(request.resource.data.codeHash)).data.ownerUid == uid
+        && getAfter(/databases/$(database)/documents/spark_circle_codes/$(request.resource.data.codeHash)).data.createdAt == request.time;
+    }
+    match /spark_circle_lookups/{uid} {
+      allow get: if owner(uid);
+      allow list, delete: if false;
+      allow create, update: if owner(uid) && memberAccount() && budget(5)
+        && request.resource.data.keys().hasOnly(['codeHash','requestedAt','windowStart','count'])
+        && request.resource.data.codeHash.matches('^[a-f0-9]{64}$')
+        && request.resource.data.requestedAt == request.time;
+    }
+    match /spark_circle_codes/{hash} {
+      allow get: if memberAccount() && (ticket(hash) || owner(resource.data.ownerUid));
+      allow list, delete: if false;
+      allow create: if memberAccount()
+        && request.resource.data.keys().hasOnly(['ownerUid','createdAt','revoked','usedBy'])
+        && request.resource.data.ownerUid == request.auth.uid && request.resource.data.createdAt == request.time
+        && request.resource.data.revoked == false && request.resource.data.usedBy == ''
+        && getAfter(/databases/$(database)/documents/spark_circle_code_owners/$(request.auth.uid)).data.codeHash == hash;
+      allow update: if memberAccount() && (
+        (owner(resource.data.ownerUid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked'])
+          && request.resource.data.revoked == true)
+        || (ticket(hash) && activeCode(hash) && resource.data.usedBy == '' && resource.data.ownerUid != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedBy'])
+          && request.resource.data.usedBy == request.auth.uid
+          && getAfter(/databases/$(database)/documents/circle_relationships/$(pairId(resource.data.ownerUid, request.auth.uid))).data.codeHash == hash
+          && getAfter(/databases/$(database)/documents/circle_relationships/$(pairId(resource.data.ownerUid, request.auth.uid))).data.status == 'PENDING'
+          && getAfter(/databases/$(database)/documents/circle_relationships/$(pairId(resource.data.ownerUid, request.auth.uid))).data.createdAt == request.time));
+    }
+    match /circle_relationships/{id} {
+      function lookupPair() {
+        let h = get(/databases/$(database)/documents/spark_circle_lookups/$(request.auth.uid)).data.codeHash;
+        let c = get(/databases/$(database)/documents/spark_circle_codes/$(h)).data;
+        return ticket(h) && id == pairId(c.ownerUid, request.auth.uid);
       }
-
-      // Backwards-compatible emergencyContacts sub-collection
-      match /emergencyContacts/{contactId} {
-        allow read, write, delete: if isOwner(userId);
+      function redeem() {
+        let n = request.resource.data;
+        let c = get(/databases/$(database)/documents/spark_circle_codes/$(n.codeHash)).data;
+        return memberAccount() && n.keys().hasOnly(['participants','senderUid','recipientUid','status','codeHash','createdAt','updatedAt','expiresAt'])
+          && n.recipientUid == request.auth.uid && n.senderUid != n.recipientUid && n.senderUid == c.ownerUid
+          && n.participants == [n.senderUid, n.recipientUid] && id == pairId(n.senderUid, n.recipientUid)
+          && n.status == 'PENDING' && n.createdAt == request.time && n.updatedAt == request.time
+          && n.expiresAt == c.createdAt + duration.value(15, 'm')
+          && ticket(n.codeHash) && activeCode(n.codeHash) && c.usedBy == ''
+          && getAfter(/databases/$(database)/documents/spark_circle_codes/$(n.codeHash)).data.usedBy == request.auth.uid;
       }
-
-      // Alerts audit sub-collection: users/{userId}/alerts/{alertId}
-      match /alerts/{alertId} {
-        allow read, create, update, delete: if isOwner(userId);
-
-        // Live location stream sub-collection: users/{userId}/alerts/{alertId}/locations/{locationId}
-        match /locations/{locationId} {
-          allow read, create, update, delete: if isOwner(userId);
+      allow get: if memberAccount() && ((resource != null && request.auth.uid in resource.data.participants) || lookupPair());
+      allow list: if memberAccount() && request.auth.uid in resource.data.participants;
+      allow create: if redeem();
+      allow update: if memberAccount() && (
+        (resource.data.status in ['REJECTED','REVOKED'] && redeem())
+        || (resource.data.status == 'PENDING' && resource.data.expiresAt <= request.time && redeem())
+        || (request.auth.uid in resource.data.participants
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && ((request.resource.data.status == 'REVOKED' && resource.data.status in ['PENDING','ACCEPTED'])
+            || (resource.data.status == 'PENDING' && request.auth.uid == resource.data.recipientUid
+              && (request.resource.data.status == 'REJECTED' ||
+                (request.resource.data.status == 'ACCEPTED' && activeCode(resource.data.codeHash)
+                  && get(/databases/$(database)/documents/spark_circle_codes/$(resource.data.codeHash)).data.usedBy == request.auth.uid))))));
+      allow delete: if false;
+    }
+    match /users/{uid} {
+      // Private profile includes birth date, address and contact information. Never readable by peers.
+      allow read, write: if owner(uid);
+      match /trustedContacts/{id} { allow read, write: if owner(uid); }
+      match /emergencyContacts/{id} { allow read, write: if owner(uid); }
+      match /circle_members/{peer} {
+        allow read: if owner(uid) || (signedIn() && request.auth.uid == peer);
+        allow create, update: if owner(uid) && peer != uid
+          && request.resource.data.keys().hasOnly(['relationId','shareEnabled','expiresAt','relationshipCreatedAt'])
+          && request.resource.data.shareEnabled is bool && request.resource.data.expiresAt is timestamp
+          && request.resource.data.expiresAt <= request.time + duration.value(61, 'm')
+          && accepted(request.resource.data.relationId, uid, peer, request.resource.data.relationshipCreatedAt);
+        allow delete: if owner(uid);
+      }
+      // Old invitation documents confer no access.
+      match /circle_invites/{id} { allow read, delete: if owner(uid); allow write: if false; }
+      match /live_location/{id} {
+        allow read: if owner(uid) || canViewLocation(uid);
+        allow create, update: if owner(uid) && id == 'current'
+          && !deletedIncident(uid, request.resource.data.incidentId)
+          && request.resource.data.keys().hasOnly(['latitude','longitude','accuracy','timestamp','incidentId','receivedAt','ownerUid','source','cached','sessionIds'])
+          && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+          && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+          && request.resource.data.timestamp is int && request.resource.data.timestamp > 0
+          && request.resource.data.timestamp <= request.time.toMillis() + 120000
+          && (resource == null || request.resource.data.timestamp >= resource.data.timestamp)
+          && (!('ownerUid' in request.resource.data) || request.resource.data.ownerUid == uid)
+          && (!('accuracy' in request.resource.data) || request.resource.data.accuracy is number && request.resource.data.accuracy >= 0)
+          && (!('source' in request.resource.data) || request.resource.data.source is string && request.resource.data.source.size() <= 40)
+          && (!('cached' in request.resource.data) || request.resource.data.cached is bool)
+          && (!('sessionIds' in request.resource.data) || request.resource.data.sessionIds is list && request.resource.data.sessionIds.size() <= 20)
+          && request.resource.data.receivedAt == request.time;
+        allow delete: if owner(uid);
+      }
+      match /alerts/{id} {
+        allow read: if owner(uid);
+        allow create, update: if owner(uid) && !deletedIncident(uid, id);
+        allow delete: if owner(uid) && deletedIncident(uid, id);
+        match /locations/{point} {
+          allow read: if owner(uid) || (!deletedIncident(uid, id) && canViewLocation(uid));
+          allow create, update: if owner(uid) && !deletedIncident(uid, id);
+          allow delete: if owner(uid) && deletedIncident(uid, id);
         }
       }
-
-      // Backwards-compatible emergencyAlerts sub-collection
-      match /emergencyAlerts/{alertId} {
-        allow read, create, update, delete: if isOwner(userId);
-
-        match /locations/{locationId} {
-          allow read, create, update, delete: if isOwner(userId);
-        }
+      match /emergencyAlerts/{id} {
+        allow read: if owner(uid);
+        allow create, update: if owner(uid) && !deletedIncident(uid, id);
+        allow delete: if owner(uid) && deletedIncident(uid, id);
+      }
+      // Retain only the opaque ID and deletion time to prevent delayed writes from restoring data.
+      match /deleted_incidents/{id} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && id.size() > 0 && id.size() <= 128
+          && request.resource.data.keys().hasOnly(['deletedAt']) && request.resource.data.deletedAt == request.time
+          && ((exists(/databases/$(database)/documents/incidents/$(id))
+              && get(/databases/$(database)/documents/incidents/$(id)).data.ownerUid == uid
+              && endedOrMissing(/databases/$(database)/documents/incidents/$(id)))
+            || (!exists(/databases/$(database)/documents/incidents/$(id))
+              && endedOrMissing(/databases/$(database)/documents/users/$(uid)/alerts/$(id))
+              && endedOrMissing(/databases/$(database)/documents/users/$(uid)/emergencyAlerts/$(id))));
+        allow update, delete: if false;
+      }
+      match /fcm_tokens/{id} { allow read, write: if owner(uid); }
+    }
+    // Peer-readable incident summaries exclude private profiles, SMS recipients and message bodies.
+    match /incidents/{id} {
+      // Client transactions must be able to establish absence before an owner-only create.
+      allow get: if signedIn() && resource == null;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid
+        && !deletedIncident(request.auth.uid, id)
+        && request.resource.data.keys().hasOnly(['ownerUid','senderName','senderPhone','policeNumber','helplineNumber','category','status','createdAt','updatedAt'])
+        && request.resource.data.status in ['ACTIVE','RESOLVED','CANCELLED']
+        && request.resource.data.senderName is string && request.resource.data.senderName.size() <= 100
+        && request.resource.data.category is string && request.resource.data.category.size() <= 100
+        && request.resource.data.senderPhone is string && request.resource.data.senderPhone.size() <= 32
+        && request.resource.data.policeNumber is string && request.resource.data.policeNumber.size() <= 32
+        && request.resource.data.helplineNumber is string && request.resource.data.helplineNumber.size() <= 32
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+      allow update: if owner(resource.data.ownerUid)
+        && !deletedIncident(resource.data.ownerUid, id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+        && request.resource.data.status in ['ACTIVE','RESOLVED','CANCELLED']
+        && (resource.data.status == 'ACTIVE' || request.resource.data.status == resource.data.status)
+        && request.resource.data.updatedAt == request.time;
+      allow read: if owner(resource.data.ownerUid) || canViewLocation(resource.data.ownerUid);
+      allow delete: if owner(resource.data.ownerUid) && resource.data.status in ['RESOLVED','CANCELLED']
+        && deletedIncident(resource.data.ownerUid, id);
+    }
+    // Private group chat: membership changes require an atomic, single-use invitation.
+    function inGroup(id) {
+      return memberAccount() && request.auth.uid in get(/databases/$(database)/documents/groups/$(id)).data.memberUids;
+    }
+    match /groups/{id} {
+      function validGroup() {
+        let g = request.resource.data;
+        return g.keys().hasOnly(['ownerUid','name','memberUids','meshKey','epoch','needsRotation','inviteHash','lastJoinHash','createdAt','updatedAt'])
+          && g.name is string && g.name.size() > 0 && g.name.size() <= 60
+          && g.memberUids is list && g.memberUids.size() > 0 && g.memberUids.size() <= 32
+          && g.memberUids.toSet().size() == g.memberUids.size() && g.ownerUid in g.memberUids
+          && g.meshKey is string && g.meshKey.matches('^[A-Za-z0-9+/]{43}=$')
+          && g.epoch is int && g.epoch > 0 && g.needsRotation is bool
+          && g.inviteHash is string && (g.inviteHash == '' || g.inviteHash.matches('^[a-f0-9]{64}$'))
+          && g.lastJoinHash is string && g.updatedAt == request.time;
+      }
+      function joinsWithInvitation() {
+        let n = request.resource.data;
+        let invite = get(/databases/$(database)/documents/group_invitations/$(n.lastJoinHash)).data;
+        return !resource.data.needsRotation && !(request.auth.uid in resource.data.memberUids)
+          && n.diff(resource.data).affectedKeys().hasOnly(['memberUids','lastJoinHash','updatedAt'])
+          && n.memberUids == resource.data.memberUids.concat([request.auth.uid])
+          && ticket(n.lastJoinHash) && resource.data.inviteHash == n.lastJoinHash
+          && invite.groupId == id && invite.ownerUid == resource.data.ownerUid && invite.revoked == false
+          && invite.usedBy == '' && invite.createdAt + duration.value(15,'m') > request.time
+          && getAfter(/databases/$(database)/documents/group_invitations/$(n.lastJoinHash)).data.usedBy == request.auth.uid;
+      }
+      allow read: if memberAccount() && request.auth.uid in resource.data.memberUids;
+      allow create: if memberAccount() && validGroup() && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.memberUids == [request.auth.uid] && request.resource.data.epoch == 1
+        && request.resource.data.needsRotation == false && request.resource.data.createdAt == request.time;
+      allow update: if memberAccount() && validGroup() && (
+        joinsWithInvitation()
+        || (owner(resource.data.ownerUid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','memberUids','meshKey','epoch','needsRotation','inviteHash','updatedAt'])
+          && request.resource.data.memberUids.toSet().hasOnly(resource.data.memberUids)
+          && ((request.resource.data.memberUids == resource.data.memberUids && !resource.data.needsRotation
+              && request.resource.data.meshKey == resource.data.meshKey && request.resource.data.epoch == resource.data.epoch)
+            || (request.resource.data.meshKey != resource.data.meshKey && request.resource.data.epoch == resource.data.epoch + 1
+                && request.resource.data.needsRotation == false)))
+        || (request.auth.uid != resource.data.ownerUid && request.auth.uid in resource.data.memberUids
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids','needsRotation','inviteHash','updatedAt'])
+          && request.resource.data.memberUids == resource.data.memberUids.removeAll([request.auth.uid])
+          && request.resource.data.needsRotation == true && request.resource.data.inviteHash == ''));
+      allow delete: if false;
+      match /members/{uid} {
+        allow read: if inGroup(id);
+        allow create, update: if owner(uid) && uid in getAfter(/databases/$(database)/documents/groups/$(id)).data.memberUids
+          && request.resource.data.keys().hasOnly(['name','photoUrl','deviceId','joinedAt'])
+          && request.resource.data.name is string && request.resource.data.name.size() <= 100
+          && request.resource.data.photoUrl is string && request.resource.data.photoUrl.size() <= 2048
+          && request.resource.data.deviceId.matches('^[a-f0-9]{32}$') && request.resource.data.joinedAt == request.time;
+        allow delete: if false;
+      }
+      match /messages/{messageId} {
+        allow read: if inGroup(id);
+        allow create: if inGroup(id) && !get(/databases/$(database)/documents/groups/$(id)).data.needsRotation
+          && messageId.matches('^[a-fA-F0-9-]{36}$')
+          && request.resource.data.keys().hasOnly(['groupId','senderUid','senderDeviceId','text','deviceTimestamp','createdAt'])
+          && request.resource.data.groupId == id && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.senderDeviceId == get(/databases/$(database)/documents/groups/$(id)/members/$(request.auth.uid)).data.deviceId
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && request.resource.data.deviceTimestamp is int && request.resource.data.deviceTimestamp > 0
+          && request.resource.data.deviceTimestamp <= request.time.toMillis() + 120000 && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
       }
     }
-
-    // Mesh Gateway Relayed Emergencies:
-    // Any authenticated SafeAlerts peer acting as an opportunistic internet gateway can upload relayed offline SOS alerts.
-    // Immutable write-only ingestion: users cannot read or tamper with other users' relayed emergencies.
-    match /mesh_relayed_emergencies/{emergencyId} {
-      allow create: if isAuthenticated()
-        && request.resource.data.emergencyId is string
-        && request.resource.data.messageText is string
-        && request.resource.data.timestamp is int;
-      allow update, delete, read: if false;
+    match /group_invitations/{hash} {
+      allow get: if memberAccount() && (ticket(hash) || owner(resource.data.ownerUid));
+      allow list, delete: if false;
+      allow create: if memberAccount() && hash.matches('^[a-f0-9]{64}$')
+        && request.resource.data.keys().hasOnly(['groupId','groupName','ownerUid','createdAt','usedBy','revoked'])
+        && owner(request.resource.data.ownerUid) && request.resource.data.createdAt == request.time
+        && request.resource.data.usedBy == '' && request.resource.data.revoked == false
+        && request.resource.data.groupName is string && request.resource.data.groupName.size() <= 60
+        && get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.ownerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.inviteHash == hash;
+      allow update: if memberAccount() && (
+        (owner(resource.data.ownerUid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked']) && request.resource.data.revoked == true)
+        || (ticket(hash) && resource.data.usedBy == '' && resource.data.revoked == false
+          && resource.data.createdAt + duration.value(15,'m') > request.time
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedBy']) && request.resource.data.usedBy == request.auth.uid
+          && getAfter(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.lastJoinHash == hash
+          && request.auth.uid in getAfter(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberUids));
     }
-
-    // Deny all other cross-user access
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

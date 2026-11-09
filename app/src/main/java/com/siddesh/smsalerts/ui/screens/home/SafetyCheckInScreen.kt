@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -88,11 +90,19 @@ fun SafetyCheckInScreen(
 ) {
     val context = LocalContext.current
     val checkInState by homeViewModel.safetyCheckInState.collectAsState()
+    val operationError by homeViewModel.safetyCheckInManager.operationError.collectAsState()
 
     var showCustomDialog by remember { mutableStateOf(false) }
     var customMinutesInput by remember { mutableStateOf("45") }
     var selectedGraceMinutes by remember { mutableIntStateOf(2) }
     var showEscalationInfoDialog by remember { mutableStateOf(false) }
+    var isStartingTimer by remember { mutableStateOf(false) }
+
+    LaunchedEffect(checkInState.isActive) {
+        if (checkInState.isActive) {
+            isStartingTimer = false
+        }
+    }
 
     // POST_NOTIFICATIONS permission launcher
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -146,10 +156,89 @@ fun SafetyCheckInScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (checkInState.isActive) {
+            if (operationError.isNotBlank()) Text(operationError, color = EmergencyRed)
+            if (checkInState.isEscalated) {
+                // ESCALATED EMERGENCY STATE
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(EmergencyRed.copy(alpha = 0.15f))
+                        .border(2.dp, EmergencyRed, RoundedCornerShape(20.dp))
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = EmergencyRed,
+                                modifier = Modifier.size(26.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "EMERGENCY SOS DISPATCHED",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 16.sp,
+                                color = EmergencyRed
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Safety timer expired without confirmation. Emergency incident has been created and broadcast to all active trusted contacts.",
+                            fontSize = 13.sp,
+                            color = TextPrimary,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SurfaceCardElevated)
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "Incident: ${checkInState.escalatedIncidentId.take(12)}... • Open incident for delivery status",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextSecondary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Resolve Emergency button
+                        Button(
+                            onClick = {
+                                HapticUtils.vibrateTick(context)
+                                homeViewModel.resolveEscalatedCheckIn()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = StatusSuccess,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("I AM SAFE — RESOLVE EMERGENCY", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                }
+            } else if (checkInState.isActive) {
                 // ACTIVE CHECK-IN STATE
                 val isGrace = checkInState.isGracePeriodActive
                 val cardBorderColor = if (isGrace) EmergencyRed else if (checkInState.isPaused) StatusWarning else StatusSuccess
@@ -202,6 +291,27 @@ fun SafetyCheckInScreen(
                             color = if (isGrace) EmergencyRed else TextSecondary,
                             textAlign = TextAlign.Center
                         )
+
+                        // Clear Active Deadline & Grace Period Display
+                        if (checkInState.targetTimeMillis > 0) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            val deadlineText = com.siddesh.smsalerts.utils.DateUtils.formatTimeOnly(checkInState.targetTimeMillis)
+                            val graceInfo = if (checkInState.gracePeriodMinutes > 0) "${checkInState.gracePeriodMinutes} min grace" else "Immediate (no grace)"
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SurfaceCardElevated)
+                                    .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Deadline: $deadlineText • Grace: $graceInfo",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(20.dp))
 
@@ -333,7 +443,7 @@ fun SafetyCheckInScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 val graceOptions = listOf(
-                    Pair("Immediate (0m)", 0),
+                    Pair("Immediate", 0),
                     Pair("1 min", 1),
                     Pair("2 mins", 2),
                     Pair("5 mins", 5)
@@ -348,10 +458,11 @@ fun SafetyCheckInScreen(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
+                                .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) EmergencyRed.copy(alpha = 0.15f) else SurfaceCard)
+                                .background(if (isSelected) EmergencyRed.copy(alpha = 0.2f) else SurfaceCard)
                                 .border(
-                                    1.dp,
+                                    if (isSelected) 1.5.dp else 1.dp,
                                     if (isSelected) EmergencyRed else CardBorder,
                                     RoundedCornerShape(10.dp)
                                 )
@@ -359,14 +470,14 @@ fun SafetyCheckInScreen(
                                     HapticUtils.vibrateTick(context)
                                     selectedGraceMinutes = mins
                                 }
-                                .padding(vertical = 10.dp),
+                                .padding(horizontal = 4.dp, vertical = 12.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = label,
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) EmergencyRed else TextSecondary,
+                                color = if (isSelected) EmergencyRed else TextPrimary,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -405,6 +516,8 @@ fun SafetyCheckInScreen(
                                 .background(SurfaceCard)
                                 .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
                                 .clickable {
+                                    if (isStartingTimer) return@clickable
+                                    isStartingTimer = true
                                     HapticUtils.vibrateTick(context)
                                     homeViewModel.startSafetyCheckIn(mins, selectedGraceMinutes)
                                 }
@@ -516,7 +629,7 @@ fun SafetyCheckInScreen(
                     Text(
                         text = "1. When duration expires, an urgent high-priority alarm notification sounds.\n" +
                                 "2. If grace period is enabled, you receive the full grace duration to confirm safety.\n" +
-                                "3. If no confirmation occurs, EmergencyManager automatically creates an incident and dispatches SMS alerts with live GPS location to your enabled contacts.\n" +
+                                "3. If no confirmation occurs, the app creates an incident and attempts authorized internet and enabled BLE delivery. Automatic carrier SMS is off.\n" +
                                 "4. Operates in background with AlarmManager exact alarms across process restarts.",
                         fontSize = 12.sp,
                         color = TextSecondary,
@@ -570,7 +683,8 @@ fun SafetyCheckInScreen(
                 Button(
                     onClick = {
                         val mins = customMinutesInput.toIntOrNull() ?: 30
-                        if (mins > 0) {
+                        if (mins > 0 && !isStartingTimer) {
+                            isStartingTimer = true
                             homeViewModel.startSafetyCheckIn(mins, selectedGraceMinutes)
                         }
                         showCustomDialog = false

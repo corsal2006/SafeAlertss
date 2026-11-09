@@ -5,7 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
+import com.siddesh.smsalerts.utils.PrivacyLog as Log
 import com.siddesh.smsalerts.data.preferences.UserPreferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 private const val TAG = "SafeAlerts/WomensSafety"
 
@@ -26,7 +27,9 @@ data class WomensSafetyJourneyState(
     val isGracePeriodActive: Boolean = false,
     val graceRemainingSeconds: Long = 0L,
     val shareLiveLocation: Boolean = true,
-    val alertHelpline1091: Boolean = true
+    val alertHelpline1091: Boolean = true,
+    val isEscalated: Boolean = false,
+    val escalatedIncidentId: String = ""
 )
 
 /**
@@ -45,13 +48,22 @@ class WomensSafetyManager(private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
     private val preferences = UserPreferencesDataStore(context)
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val _operationError = MutableStateFlow<String?>(null)
+    val operationError = _operationError.asStateFlow()
+    fun clearOperationError() { _operationError.value = null }
+    private val scope = CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO +
+        kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+            Log.e(TAG, "Journey persistence or scheduling failed", error)
+            _operationError.value = "Journey change could not be completed. Check device storage and verify the saved deadline before relying on it."
+        })
 
     private val _journeyState = MutableStateFlow(WomensSafetyJourneyState())
     val journeyState: StateFlow<WomensSafetyJourneyState> = _journeyState.asStateFlow()
+    private var observer: kotlinx.coroutines.Job? = null
+    fun closeObserver() { observer?.cancel() }
 
     init {
-        scope.launch {
+        observer = scope.launch {
             preferences.preferencesFlow.collect { prefs ->
                 val now = System.currentTimeMillis()
                 if (prefs.womensSafetyActive) {
@@ -73,7 +85,9 @@ class WomensSafetyManager(private val context: Context) {
                         isGracePeriodActive = prefs.womensSafetyGracePeriodActive,
                         graceRemainingSeconds = graceRemaining,
                         shareLiveLocation = prefs.womensSafetyShareLiveLocation,
-                        alertHelpline1091 = prefs.womensSafetyAlertHelpline1091
+                        alertHelpline1091 = prefs.womensSafetyAlertHelpline1091,
+                        isEscalated = false,
+                        escalatedIncidentId = ""
                     )
                 } else {
                     _journeyState.value = WomensSafetyJourneyState(
@@ -86,7 +100,9 @@ class WomensSafetyManager(private val context: Context) {
                         isGracePeriodActive = false,
                         graceRemainingSeconds = 0L,
                         shareLiveLocation = prefs.womensSafetyShareLiveLocation,
-                        alertHelpline1091 = prefs.womensSafetyAlertHelpline1091
+                        alertHelpline1091 = prefs.womensSafetyAlertHelpline1091,
+                        isEscalated = prefs.womensSafetyEscalated,
+                        escalatedIncidentId = prefs.womensSafetyIncidentId
                     )
                 }
             }
@@ -98,10 +114,12 @@ class WomensSafetyManager(private val context: Context) {
         durationMinutes: Int,
         gracePeriodMinutes: Int = 2,
         shareLocation: Boolean = true,
-        alertHelpline: Boolean = true
+        alertHelpline: Boolean = true,
+        latitude: Double? = null, longitude: Double? = null
     ) {
+        if (durationMinutes !in 1..1440 || destination.isBlank()) return
         val targetMillis = System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
-        Log.i(TAG, "Starting Women's Safety Journey to '$destination' ($durationMinutes mins, target=$targetMillis)")
+        Log.i(TAG, "Starting journey timer")
 
         scope.launch {
             preferences.startWomensSafetyJourney(
@@ -110,14 +128,21 @@ class WomensSafetyManager(private val context: Context) {
                 targetTimestamp = targetMillis,
                 gracePeriodMinutes = gracePeriodMinutes,
                 shareLiveLocation = shareLocation,
+                latitude = latitude, longitude = longitude,
                 alertHelpline1091 = alertHelpline
             )
+            SafetyTimerWork.schedule(context, SafetyTimerWork.JOURNEY, preferences.preferencesFlow.first())
+            if (shareLocation) LiveLocationManager.getInstance(context).startLiveSharing("journey")
         }
 
-        scheduleAlarm(targetMillis, ACTION_JOURNEY_EXPIRED, 201)
+
     }
 
+    private var lastExtensionTime = 0L
     fun extendDuration(extraMinutes: Int) {
+        val elapsed = android.os.SystemClock.elapsedRealtime()
+        if (elapsed - lastExtensionTime < 1000 || extraMinutes !in 1..60) return
+        lastExtensionTime = elapsed
         val current = _journeyState.value
         if (!current.isActive) return
         val newTarget = System.currentTimeMillis() + ((current.remainingSeconds + (extraMinutes * 60)) * 1000L)
@@ -128,9 +153,10 @@ class WomensSafetyManager(private val context: Context) {
 
         scope.launch {
             preferences.extendWomensSafetyJourney(newTarget)
+            SafetyTimerWork.schedule(context, SafetyTimerWork.JOURNEY, preferences.preferencesFlow.first())
         }
 
-        scheduleAlarm(newTarget, ACTION_JOURNEY_EXPIRED, 201)
+
     }
 
     fun markArrivedOrCancel() {
@@ -143,6 +169,14 @@ class WomensSafetyManager(private val context: Context) {
 
         scope.launch {
             preferences.cancelOrCompleteWomensSafetyJourney()
+        }
+    }
+
+    fun resolveEscalatedJourney() {
+        Log.i(TAG, "Resolving escalated Women's Safety Journey emergency")
+        EmergencyManager.getInstance(context).resolveEmergency(_journeyState.value.escalatedIncidentId)
+        scope.launch {
+            preferences.clearWomensSafetyEscalation()
         }
     }
 
@@ -163,33 +197,6 @@ class WomensSafetyManager(private val context: Context) {
                 remainingSeconds = remaining,
                 graceRemainingSeconds = graceRemaining
             )
-        }
-    }
-
-    private fun scheduleAlarm(triggerAtMillis: Long, action: String, requestCode: Int) {
-        if (alarmManager == null) return
-        val intent = Intent(context, WomensSafetyReceiver::class.java).apply {
-            this.action = action
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-                } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-                }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-            }
-        } catch (e: SecurityException) {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
     }
 

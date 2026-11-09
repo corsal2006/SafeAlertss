@@ -1,0 +1,12 @@
+html,body { height:100%; width:100%; margin:0; background:#0F172A; font-family:sans-serif }
+/* Android WebView can resolve the percentage-height chain to zero during initial layout. */
+#map { position:fixed; inset:0; margin:0; background:#0F172A; font-family:sans-serif }
+.person { width:34px; height:34px; border-radius:50%; border:2px solid white; background:#0284C7; color:white; display:grid; place-items:center; font-weight:bold; font-size:12px; box-shadow:0 2px 6px rgba(0,0,0,0.5) }
+.person.origin { background:#10B981; border:2px solid #ECFDF5 }
+.person.dest { background:#EC4899; border:2px solid #FDF2F8 }
+.person.danger { background:#EF4444; border:2px solid #FFFFFF; animation:dangerPulse 1.2s infinite }
+@keyframes dangerPulse { 0% { transform:scale(1); box-shadow:0 0 0 0 rgba(239,68,68,0.7); } 70% { transform:scale(1.15); box-shadow:0 0 0 10px rgba(239,68,68,0); } 100% { transform:scale(1); } }
+.leaflet-container { font:12px sans-serif; background:#0F172A }
+.leaflet-control-attribution { font-size:10px; max-width:85%; background:rgba(15,23,42,0.8) !important; color:#94A3B8 !important; }
+.leaflet-control-attribution a { color:#38BDF8 !important; }
+#status { position:absolute; top:8px; right:8px; z-index:500; max-width:75%; background:rgba(15,23,42,0.9); color:#E2E8F0; padding:6px 10px; border-radius:8px; font-size:11px; border:1px solid rgba(255,255,255,0.1); pointer-events:none }
