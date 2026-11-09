@@ -1,9 +1,6 @@
 package com.siddesh.smsalerts.ui.screens.auth
 
-<<<<<<< HEAD
 import androidx.compose.foundation.Image
-=======
->>>>>>> origin/main
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -129,11 +126,7 @@ fun WelcomeScreen(
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_app_logo),
-<<<<<<< HEAD
                         contentDescription = "SafeAlerts Logo",
-=======
-                        contentDescription = "Safe Alerts Logo",
->>>>>>> origin/main
                         tint = Color.White,
                         modifier = Modifier.size(56.dp)
                     )
@@ -142,11 +135,7 @@ fun WelcomeScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-<<<<<<< HEAD
                     text = "SafeAlerts",
-=======
-                    text = "Safe Alerts",
->>>>>>> origin/main
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = TextPrimary,
@@ -156,11 +145,7 @@ fun WelcomeScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-<<<<<<< HEAD
                     text = "PERSONAL EMERGENCY ALERT SYSTEM",
-=======
-                    text = "SMS EMERGENCY ALERT SYSTEM",
->>>>>>> origin/main
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = EmergencyRed,
@@ -247,18 +232,10 @@ fun WelcomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-<<<<<<< HEAD
                         Image(
                             painter = painterResource(id = R.drawable.ic_google_logo),
                             contentDescription = "Google Logo",
                             modifier = Modifier.size(20.dp)
-=======
-                        Text(
-                            text = "G",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = EmergencyRed
->>>>>>> origin/main
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(

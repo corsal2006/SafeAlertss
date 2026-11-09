@@ -17,11 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-<<<<<<< HEAD
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.siddesh.smsalerts.utils.ProfileDates
-=======
->>>>>>> origin/main
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,11 +44,8 @@ fun ProfileScreen(
     onLogoutSuccess: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAbout: () -> Unit,
-<<<<<<< HEAD
     onNavigateToContacts: () -> Unit = {},
     onContinue: () -> Unit = {},
-=======
->>>>>>> origin/main
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -63,7 +57,6 @@ fun ProfileScreen(
 
     val userProfile by viewModel.userProfile.collectAsState()
     val contactsCount by viewModel.contactsCount.collectAsState()
-<<<<<<< HEAD
     val enabledContactsCount by viewModel.enabledContactsCount.collectAsState()
     val phoneState by viewModel.phoneVerification.state.collectAsState()
     var verificationCode by remember { mutableStateOf("") }
@@ -71,13 +64,10 @@ fun ProfileScreen(
     LaunchedEffect(phoneState.resendAt) {
         while (true) { phoneClock = android.os.SystemClock.elapsedRealtime(); kotlinx.coroutines.delay(1000) }
     }
-=======
->>>>>>> origin/main
     val alertsCount by viewModel.alertsCount.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val updateMessage by viewModel.updateMessage.collectAsState()
 
-<<<<<<< HEAD
     var isEditing by rememberSaveable { mutableStateOf(false) }
     var editName by rememberSaveable { mutableStateOf("") }
     var editPhone by rememberSaveable { mutableStateOf("") }
@@ -96,17 +86,6 @@ fun ProfileScreen(
                 loadedUid = it.uid
                 if (!it.isComplete) isEditing = true
             }
-=======
-    var isEditing by remember { mutableStateOf(false) }
-    var editName by remember { mutableStateOf("") }
-    var editPhone by remember { mutableStateOf("") }
-    var showLogoutDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(userProfile) {
-        userProfile?.let {
-            editName = it.name
-            editPhone = it.phoneNumber
->>>>>>> origin/main
         }
     }
 
@@ -116,10 +95,6 @@ fun ProfileScreen(
         updateMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessage()
-<<<<<<< HEAD
-=======
-            isEditing = false
->>>>>>> origin/main
         }
     }
 
@@ -137,16 +112,12 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-<<<<<<< HEAD
                 .imePadding()
-=======
->>>>>>> origin/main
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-<<<<<<< HEAD
             if (userProfile?.isComplete == false) {
                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -156,8 +127,6 @@ fun ProfileScreen(
                     }
                 }
             }
-=======
->>>>>>> origin/main
             // Profile Card with Avatar
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
@@ -196,11 +165,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-<<<<<<< HEAD
                         text = userProfile?.name?.ifBlank { "SafeAlerts User" } ?: "SafeAlerts User",
-=======
-                        text = userProfile?.name?.ifBlank { "SafeAlert User" } ?: "SafeAlert User",
->>>>>>> origin/main
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -286,11 +251,7 @@ fun ProfileScreen(
 
             // Edit Profile / Profile Details Form
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-<<<<<<< HEAD
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-=======
-                Column(modifier = Modifier.fillMaxWidth()) {
->>>>>>> origin/main
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -305,27 +266,17 @@ fun ProfileScreen(
                         )
 
                         TextButton(
-<<<<<<< HEAD
                             enabled = !isLoading,
                             onClick = {
                                 if (isEditing) {
                                     viewModel.updateProfile(editName, editPhone, editDob.takeIf { it.isNotBlank() }, editAddress) { isEditing = false }
-=======
-                            onClick = {
-                                if (isEditing) {
-                                    viewModel.updateProfile(editName, editPhone)
->>>>>>> origin/main
                                 } else {
                                     isEditing = true
                                 }
                             }
                         ) {
                             Text(
-<<<<<<< HEAD
                                 text = if (isLoading) "SAVING…" else if (isEditing) "SAVE" else "EDIT",
-=======
-                                text = if (isEditing) "SAVE" else "EDIT",
->>>>>>> origin/main
                                 color = EmergencyRed,
                                 fontWeight = FontWeight.Bold
                             )
@@ -372,7 +323,6 @@ fun ProfileScreen(
                         ),
                         shape = RoundedCornerShape(10.dp)
                     )
-<<<<<<< HEAD
 
                     Spacer(Modifier.height(10.dp))
                     OutlinedButton(onClick = {
@@ -407,8 +357,6 @@ fun ProfileScreen(
                     TextButton(onClick = onNavigateToContacts, modifier = Modifier.heightIn(min = 48.dp)) { Text("Manage emergency contacts") }
                     TextButton(onClick = onNavigateToSettings, modifier = Modifier.heightIn(min = 48.dp)) { Text("Emergency numbers and sharing preferences") }
                     Text("Permissions are requested when you use location, Bluetooth, microphone or notifications. Review access in Android App Settings.", color = TextMuted)
-=======
->>>>>>> origin/main
                 }
             }
 
@@ -539,11 +487,7 @@ fun ProfileScreen(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-<<<<<<< HEAD
                 Text("LOGOUT OF SafeAlerts", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-=======
-                Text("LOGOUT OF SAFEALERT", fontWeight = FontWeight.Bold, fontSize = 14.sp)
->>>>>>> origin/main
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -554,11 +498,7 @@ fun ProfileScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Confirm Logout", fontWeight = FontWeight.Bold, color = TextPrimary) },
-<<<<<<< HEAD
             text = { Text("Are you sure you want to log out of your SafeAlerts session?") },
-=======
-            text = { Text("Are you sure you want to log out of your SafeAlert session?") },
->>>>>>> origin/main
             confirmButton = {
                 Button(
                     onClick = {

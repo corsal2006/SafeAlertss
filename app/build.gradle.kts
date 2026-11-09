@@ -1,18 +1,14 @@
-<<<<<<< HEAD
 
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.util.Properties
 
-=======
->>>>>>> origin/main
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
 }
 
-<<<<<<< HEAD
 // Credentials stay on this machine or in the CI environment, never in the APK/repository.
 val releaseSigningProperties = Properties().apply {
     rootProject.file("signing.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
@@ -58,8 +54,6 @@ tasks.register("verifyReleaseSigning") {
     }
 }
 
-=======
->>>>>>> origin/main
 android {
     namespace = "com.siddesh.smsalerts"
     compileSdk = 34
@@ -68,7 +62,6 @@ android {
         applicationId = "com.siddesh.smsalerts"
         minSdk = 24
         targetSdk = 34
-<<<<<<< HEAD
         versionCode = 2
         versionName = "1.0.1"
         buildConfigField("boolean", "IS_LOCAL_QA", "false")
@@ -77,18 +70,11 @@ android {
 
 
         testInstrumentationRunner = "com.siddesh.smsalerts.QaTestRunner"
-=======
-        versionCode = 1
-        versionName = "1.0.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
->>>>>>> origin/main
         vectorDrawables {
             useSupportLibrary = true
         }
     }
 
-<<<<<<< HEAD
     signingConfigs {
         if (releaseSigningReady) {
             create("production") {
@@ -116,10 +102,6 @@ android {
             if (releaseSigningReady) signingConfig = signingConfigs.getByName("production")
             // Preserve the tested reflection/serialization paths. Shrinking is optional,
             // and is not a way to resolve a Play Protect classification.
-=======
-    buildTypes {
-        release {
->>>>>>> origin/main
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -128,14 +110,11 @@ android {
         }
     }
 
-<<<<<<< HEAD
     // A configured release must pass key validation before it can be packaged.
     if (releaseSigningReady) {
         tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn("verifyReleaseSigning") }
     }
 
-=======
->>>>>>> origin/main
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -147,10 +126,7 @@ android {
 
     buildFeatures {
         compose = true
-<<<<<<< HEAD
         buildConfig = true
-=======
->>>>>>> origin/main
     }
 
     composeOptions {
@@ -162,7 +138,6 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-<<<<<<< HEAD
 
     lint {
         abortOnError = true
@@ -176,11 +151,6 @@ dependencies {
             because("Fix GHSA-735f-pc8j-v9w8 unknown-field recursion denial of service in the Firestore transitive runtime")
         }
     }
-=======
-}
-
-dependencies {
->>>>>>> origin/main
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
@@ -202,12 +172,9 @@ dependencies {
     // Location Service
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
-<<<<<<< HEAD
     // Google Maps SDK for Android & Maps Compose
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.maps.android:maps-compose:4.4.1")
-=======
->>>>>>> origin/main
     // Google Sign-In & Credential Manager
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation("androidx.credentials:credentials:1.3.0")
@@ -222,10 +189,7 @@ dependencies {
     implementation(firebaseBom)
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
-<<<<<<< HEAD
     implementation("com.google.firebase:firebase-messaging-ktx")
-=======
->>>>>>> origin/main
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
@@ -240,17 +204,11 @@ dependencies {
     // Test dependencies
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
-<<<<<<< HEAD
     testImplementation("org.json:json:20231013")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.compose.ui:ui-test-manifest")
-=======
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
->>>>>>> origin/main
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

@@ -1,9 +1,5 @@
 <resources>
-<<<<<<< HEAD
     <string name="app_name">SafeAlerts</string>
-=======
-    <string name="app_name">Safe Alerts</string>
->>>>>>> origin/main
     <string name="app_subtitle">SMS Emergency Alert System</string>
     <string name="app_tagline">Emergency assistance, simplified.</string>
     <string name="app_welcome_description">Quickly notify your trusted contacts when you need help.</string>

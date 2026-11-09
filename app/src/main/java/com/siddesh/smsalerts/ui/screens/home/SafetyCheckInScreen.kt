@@ -15,11 +15,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-<<<<<<< HEAD
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-=======
->>>>>>> origin/main
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,25 +29,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.CheckCircle
-<<<<<<< HEAD
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-=======
-import androidx.compose.material.icons.filled.Info
->>>>>>> origin/main
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-<<<<<<< HEAD
-=======
-import androidx.compose.material3.CircularProgressIndicator
->>>>>>> origin/main
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,10 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-<<<<<<< HEAD
 import androidx.compose.runtime.mutableIntStateOf
-=======
->>>>>>> origin/main
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -94,10 +80,6 @@ import com.siddesh.smsalerts.ui.theme.TextMuted
 import com.siddesh.smsalerts.ui.theme.TextPrimary
 import com.siddesh.smsalerts.ui.theme.TextSecondary
 import com.siddesh.smsalerts.ui.viewmodel.HomeViewModel
-<<<<<<< HEAD
-=======
-import com.siddesh.smsalerts.utils.DateUtils
->>>>>>> origin/main
 import com.siddesh.smsalerts.utils.HapticUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,7 +90,6 @@ fun SafetyCheckInScreen(
 ) {
     val context = LocalContext.current
     val checkInState by homeViewModel.safetyCheckInState.collectAsState()
-<<<<<<< HEAD
     val operationError by homeViewModel.safetyCheckInManager.operationError.collectAsState()
 
     var showCustomDialog by remember { mutableStateOf(false) }
@@ -122,12 +103,6 @@ fun SafetyCheckInScreen(
             isStartingTimer = false
         }
     }
-=======
-
-    var showCustomDialog by remember { mutableStateOf(false) }
-    var customMinutesInput by remember { mutableStateOf("45") }
-    var showEscalationInfoDialog by remember { mutableStateOf(false) }
->>>>>>> origin/main
 
     // POST_NOTIFICATIONS permission launcher
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -181,7 +156,6 @@ fun SafetyCheckInScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-<<<<<<< HEAD
                 .padding(horizontal = 20.dp, vertical = 8.dp)
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -270,31 +244,18 @@ fun SafetyCheckInScreen(
                 val cardBorderColor = if (isGrace) EmergencyRed else if (checkInState.isPaused) StatusWarning else StatusSuccess
                 val cardBgColor = if (isGrace) EmergencyRed.copy(alpha = 0.12f) else if (checkInState.isPaused) StatusWarning.copy(alpha = 0.08f) else StatusSuccess.copy(alpha = 0.12f)
 
-=======
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (checkInState.isActive) {
-                // ACTIVE CHECK-IN STATE
->>>>>>> origin/main
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(20.dp))
-<<<<<<< HEAD
                         .background(cardBgColor)
                         .border(1.5.dp, cardBorderColor.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-=======
-                        .background(StatusSuccess.copy(alpha = 0.12f))
-                        .border(1.5.dp, StatusSuccess.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
->>>>>>> origin/main
                         .padding(20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-<<<<<<< HEAD
                                 imageVector = if (isGrace) Icons.Default.Warning else if (checkInState.isPaused) Icons.Default.Pause else Icons.Default.Timer,
                                 contentDescription = null,
                                 tint = if (isGrace) EmergencyRed else if (checkInState.isPaused) StatusWarning else StatusSuccess,
@@ -306,46 +267,24 @@ fun SafetyCheckInScreen(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = if (isGrace) EmergencyRed else if (checkInState.isPaused) StatusWarning else StatusSuccess
-=======
-                                imageVector = Icons.Default.Timer,
-                                contentDescription = null,
-                                tint = StatusSuccess,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Safety Check-In Active",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = StatusSuccess
->>>>>>> origin/main
                             )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Countdown Display
-<<<<<<< HEAD
                         val displaySeconds = if (isGrace) checkInState.graceRemainingSeconds else checkInState.remainingSeconds
                         val minutes = displaySeconds / 60
                         val seconds = displaySeconds % 60
                         Text(
                             text = "%02d:%02d".format(minutes, seconds),
                             fontSize = 46.sp,
-=======
-                        val minutes = checkInState.remainingSeconds / 60
-                        val seconds = checkInState.remainingSeconds % 60
-                        Text(
-                            text = "%02d:%02d".format(minutes, seconds),
-                            fontSize = 44.sp,
->>>>>>> origin/main
                             fontWeight = FontWeight.ExtraBold,
                             color = TextPrimary,
                             letterSpacing = 1.sp
                         )
 
                         Text(
-<<<<<<< HEAD
                             text = if (isGrace) "Emergency alert will dispatch when grace expires!" else if (checkInState.isPaused) "Timer is paused. Tap resume to continue." else "Time remaining to confirm your safety",
                             fontSize = 12.sp,
                             fontWeight = if (isGrace) FontWeight.SemiBold else FontWeight.Normal,
@@ -377,15 +316,6 @@ fun SafetyCheckInScreen(
                         Spacer(modifier = Modifier.height(20.dp))
 
                         // Primary Action: Confirm Safety
-=======
-                            text = if (checkInState.isExpired) "Check-in time expired!" else "Time remaining to confirm safety",
-                            fontSize = 12.sp,
-                            color = if (checkInState.isExpired) EmergencyRed else TextSecondary
-                        )
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
->>>>>>> origin/main
                         Button(
                             onClick = {
                                 HapticUtils.vibrateTick(context)
@@ -404,7 +334,6 @@ fun SafetyCheckInScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("I'M SAFE — CONFIRM SAFETY", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
-<<<<<<< HEAD
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -454,12 +383,6 @@ fun SafetyCheckInScreen(
                 }
             } else {
                 // INACTIVE STATE: SELECT DURATION & GRACE PERIOD
-=======
-                    }
-                }
-            } else {
-                // INACTIVE STATE: SELECT DURATION
->>>>>>> origin/main
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -495,11 +418,7 @@ fun SafetyCheckInScreen(
                         )
 
                         Text(
-<<<<<<< HEAD
                             text = "Traveling through unfamiliar areas or meeting someone new? If the timer expires without confirmation, SafeAlerts automatically begins emergency escalation.",
-=======
-                            text = "Going for a run, meeting someone new, or traveling through an unfamiliar area? SafeAlert will alert you to verify your safety when the time expires.",
->>>>>>> origin/main
                             fontSize = 13.sp,
                             color = TextSecondary,
                             textAlign = TextAlign.Center,
@@ -511,7 +430,6 @@ fun SafetyCheckInScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-<<<<<<< HEAD
                 // Grace Period Selection Header
                 Text(
                     text = "GRACE PERIOD BEFORE ESCALATION",
@@ -568,8 +486,6 @@ fun SafetyCheckInScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-=======
->>>>>>> origin/main
                 Text(
                     text = "SELECT CHECK-IN DURATION",
                     fontSize = 11.sp,
@@ -600,15 +516,10 @@ fun SafetyCheckInScreen(
                                 .background(SurfaceCard)
                                 .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
                                 .clickable {
-<<<<<<< HEAD
                                     if (isStartingTimer) return@clickable
                                     isStartingTimer = true
                                     HapticUtils.vibrateTick(context)
                                     homeViewModel.startSafetyCheckIn(mins, selectedGraceMinutes)
-=======
-                                    HapticUtils.vibrateTick(context)
-                                    homeViewModel.startSafetyCheckIn(mins)
->>>>>>> origin/main
                                 }
                                 .padding(horizontal = 16.dp, vertical = 14.dp)
                         ) {
@@ -706,11 +617,7 @@ fun SafetyCheckInScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-<<<<<<< HEAD
                             text = "Authoritative Escalation Architecture",
-=======
-                            text = "Safety Escalation Protocol",
->>>>>>> origin/main
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             color = TextPrimary
@@ -720,17 +627,10 @@ fun SafetyCheckInScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-<<<<<<< HEAD
                         text = "1. When duration expires, an urgent high-priority alarm notification sounds.\n" +
                                 "2. If grace period is enabled, you receive the full grace duration to confirm safety.\n" +
                                 "3. If no confirmation occurs, the app creates an incident and attempts authorized internet and enabled BLE delivery. Automatic carrier SMS is off.\n" +
                                 "4. Operates in background with AlarmManager exact alarms across process restarts.",
-=======
-                        text = "1. When time expires, a persistent urgent device notification is issued.\n" +
-                                "2. You can confirm \"I'm Safe\" at any time directly from the notification or app.\n" +
-                                "3. If unconfirmed, SafeAlert prepares emergency dispatch with your live location.\n" +
-                                "4. SafeAlert will never send unauthorized SMS without explicit confirmation.",
->>>>>>> origin/main
                         fontSize = 12.sp,
                         color = TextSecondary,
                         lineHeight = 18.sp
@@ -783,14 +683,9 @@ fun SafetyCheckInScreen(
                 Button(
                     onClick = {
                         val mins = customMinutesInput.toIntOrNull() ?: 30
-<<<<<<< HEAD
                         if (mins > 0 && !isStartingTimer) {
                             isStartingTimer = true
                             homeViewModel.startSafetyCheckIn(mins, selectedGraceMinutes)
-=======
-                        if (mins > 0) {
-                            homeViewModel.startSafetyCheckIn(mins)
->>>>>>> origin/main
                         }
                         showCustomDialog = false
                     },
@@ -822,22 +717,14 @@ fun SafetyCheckInScreen(
             },
             title = {
                 Text(
-<<<<<<< HEAD
                     text = "Safety Check-In Protection",
-=======
-                    text = "How Safety Check-In Protects You",
->>>>>>> origin/main
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Column {
                     Text(
-<<<<<<< HEAD
                         text = "Safety Check-In is backed by the durable Emergency Orchestration Engine. If you cannot confirm safety before the timer and grace period elapse, your emergency contacts are dispatched with your precise GPS coordinates, offline mesh broadcast begins, and emergency outbox records delivery status.",
-=======
-                        text = "Safety Check-In acts as a digital safety buddy. If you don't check in before the countdown runs out, the app sounds an alert and offers 1-tap SOS dispatch to your trusted contacts with your GPS location.",
->>>>>>> origin/main
                         fontSize = 13.sp,
                         lineHeight = 18.sp
                     )

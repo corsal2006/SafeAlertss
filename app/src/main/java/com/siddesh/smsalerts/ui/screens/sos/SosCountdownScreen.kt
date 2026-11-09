@@ -48,12 +48,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-<<<<<<< HEAD
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-=======
->>>>>>> origin/main
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,7 +85,6 @@ fun SosCountdownScreen(
     customMessage: String,
     triggerSource: String = "BUTTON",
     sosViewModel: SosViewModel,
-<<<<<<< HEAD
     onNavigateBack: () -> Unit,
     onIncident: (String) -> Unit = {}
 ) {
@@ -118,22 +114,6 @@ fun SosCountdownScreen(
             sosViewModel.startCountdown(emergencyType, customMessage, triggerSource)
             attachedId = sosViewModel.incidentId
         }
-=======
-    onNavigateBack: () -> Unit
-) {
-    val context = LocalContext.current
-    val stage by sosViewModel.stage.collectAsState()
-
-    BackHandler {
-        if (stage is SosStage.Countdown) {
-            sosViewModel.cancelEmergency()
-        }
-        onNavigateBack()
-    }
-
-    LaunchedEffect(Unit) {
-        sosViewModel.startCountdown(emergencyType, customMessage, triggerSource)
->>>>>>> origin/main
     }
 
     Box(
@@ -146,10 +126,7 @@ fun SosCountdownScreen(
             is SosStage.Countdown -> {
                 CountdownView(
                     secondsLeft = currentStage.secondsLeft,
-<<<<<<< HEAD
                     totalSeconds = countdownTotal,
-=======
->>>>>>> origin/main
                     emergencyType = emergencyType,
                     customMessage = customMessage,
                     triggerSource = triggerSource,
@@ -158,16 +135,11 @@ fun SosCountdownScreen(
                     },
                     onCancel = {
                         sosViewModel.cancelEmergency()
-<<<<<<< HEAD
-=======
-                        onNavigateBack()
->>>>>>> origin/main
                     }
                 )
             }
             is SosStage.AcquiringLocation,
             is SosStage.TransmittingSms,
-<<<<<<< HEAD
             is SosStage.SavingCloudAudit,
             is SosStage.Dispatching,
             is SosStage.TriggerDetected -> {
@@ -181,20 +153,11 @@ fun SosCountdownScreen(
                     OutlinedButton(onClick = { leaveOnce() }, modifier = Modifier.fillMaxWidth()) { Text("Back") }
                 }
             }
-=======
-            is SosStage.SavingCloudAudit -> {
-                DispatchingProgressView(stage = currentStage)
-            }
->>>>>>> origin/main
             is SosStage.Completed -> {
                 DispatchResultView(
                     alert = currentStage.alert,
                     smsResult = currentStage.smsResult,
-<<<<<<< HEAD
                     onDone = { leaveOnce() }
-=======
-                    onDone = onNavigateBack
->>>>>>> origin/main
                 )
             }
             is SosStage.Error -> {
@@ -212,7 +175,6 @@ fun SosCountdownScreen(
                             // Safely handled
                         }
                     },
-<<<<<<< HEAD
                     onBack = { leaveOnce() }
                 )
             }
@@ -240,14 +202,6 @@ fun SosCountdownScreen(
                         }
                     }
                     CircularProgressIndicator(color = EmergencyRed)
-=======
-                    onBack = onNavigateBack
-                )
-            }
-            is SosStage.Cancelled -> {
-                LaunchedEffect(Unit) {
-                    onNavigateBack()
->>>>>>> origin/main
                 }
             }
         }
@@ -257,10 +211,7 @@ fun SosCountdownScreen(
 @Composable
 private fun CountdownView(
     secondsLeft: Int,
-<<<<<<< HEAD
     totalSeconds: Int,
-=======
->>>>>>> origin/main
     emergencyType: String,
     customMessage: String,
     triggerSource: String = "BUTTON",
@@ -338,11 +289,7 @@ private fun CountdownView(
                     style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
                 )
 
-<<<<<<< HEAD
                 val sweep = (secondsLeft.toFloat() / totalSeconds.coerceAtLeast(1)).coerceIn(0f, 1f) * 360f
-=======
-                val sweep = (secondsLeft / 5f) * 360f
->>>>>>> origin/main
                 drawArc(
                     color = EmergencyRed,
                     startAngle = -90f,
@@ -415,11 +362,7 @@ private fun CountdownView(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-<<<<<<< HEAD
                         text = "A location link is included when enabled and a fix is available",
-=======
-                        text = "Real-time GPS link will be appended to SMS",
->>>>>>> origin/main
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
@@ -487,31 +430,21 @@ private fun CountdownView(
 private fun DispatchingProgressView(stage: SosStage) {
     val stageTitle = when (stage) {
         is SosStage.AcquiringLocation -> "1/3 Acquiring GPS Location"
-<<<<<<< HEAD
         is SosStage.TransmittingSms -> "2/3 Transmitting Emergency SMS"
         is SosStage.SavingCloudAudit -> "3/3 Storing Emergency Record"
         is SosStage.Dispatching -> "Broadcasting Multi-Transport SOS"
         is SosStage.EmergencyActive -> "Emergency Active (Relay & Live Location)"
         is SosStage.TriggerDetected -> "Emergency Trigger Detected"
-=======
-        is SosStage.TransmittingSms -> "2/3 Transmitting Native SMS"
-        is SosStage.SavingCloudAudit -> "3/3 Storing Emergency Record"
->>>>>>> origin/main
         else -> "Processing..."
     }
 
     val stageDescription = when (stage) {
         is SosStage.AcquiringLocation -> "Connecting to Android Fused Location Provider for accurate GPS coordinates..."
-<<<<<<< HEAD
         is SosStage.TransmittingSms -> "Transmitting direct emergency SMS alerts via cellular network to your trusted contacts..."
         is SosStage.SavingCloudAudit -> "Creating permanent encrypted audit record in Firebase Firestore..."
         is SosStage.Dispatching -> "Attempting enabled BLE transfers and authorized cloud sync..."
         is SosStage.EmergencyActive -> "Broadcasting live periodic coordinates and BLE store-and-forward packets..."
         is SosStage.TriggerDetected -> "Verifying trigger parameters and countdown..."
-=======
-        is SosStage.TransmittingSms -> "Executing cellular SMS Manager dispatch to configured emergency contacts..."
-        is SosStage.SavingCloudAudit -> "Creating permanent encrypted audit record in Firebase Firestore..."
->>>>>>> origin/main
         else -> "Finalizing..."
     }
 
@@ -790,11 +723,7 @@ private fun DispatchErrorView(
             val buttonText = when {
                 isLocationIntent -> "ENABLE LOCATION IN SETTINGS"
                 isSettingsIntent -> "OPEN APP SETTINGS"
-<<<<<<< HEAD
                 else -> "OPEN SMS APP (CARRIER CHARGES MAY APPLY)"
-=======
-                else -> "OPEN SYSTEM SMS APP"
->>>>>>> origin/main
             }
             val buttonIcon = when {
                 isLocationIntent -> Icons.Default.MyLocation

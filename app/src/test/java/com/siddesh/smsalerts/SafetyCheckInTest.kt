@@ -1,9 +1,6 @@
 package com.siddesh.smsalerts
 
-<<<<<<< HEAD
 import com.siddesh.smsalerts.service.SafetyCheckInState
-=======
->>>>>>> origin/main
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -32,20 +29,12 @@ class SafetyCheckInTest {
 
     @Test
     fun formatRemainingTime_minutesAndSeconds() {
-<<<<<<< HEAD
-=======
-        // 14 minutes and 30 seconds = (14 * 60 + 30) * 1000 = 870,000 ms
->>>>>>> origin/main
         val millis = (14 * 60 + 30) * 1000L
         assertEquals("14m 30s", formatRemainingTime(millis))
     }
 
     @Test
     fun formatRemainingTime_hoursAndMinutes() {
-<<<<<<< HEAD
-=======
-        // 1 hour and 15 minutes = 75 minutes * 60 * 1000 = 4,500,000 ms
->>>>>>> origin/main
         val millis = 75 * 60 * 1000L
         assertEquals("01h 15m", formatRemainingTime(millis))
     }
@@ -67,7 +56,6 @@ class SafetyCheckInTest {
         val isExpiredAfter = (fifteenMinExpiry + 1000) >= fifteenMinExpiry
         assertTrue(isExpiredAfter)
     }
-<<<<<<< HEAD
 
     @Test
     fun safetyCheckInState_gracePeriodAndPauseBehavior() {
@@ -130,6 +118,4 @@ class SafetyCheckInTest {
         assertFalse(immediateState.isGracePeriodActive)
         assertEquals(0, immediateState.gracePeriodMinutes)
     }
-=======
->>>>>>> origin/main
 }

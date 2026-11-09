@@ -59,7 +59,6 @@ import com.siddesh.smsalerts.ui.theme.TextSecondary
 import com.siddesh.smsalerts.ui.viewmodel.HistoryViewModel
 import com.siddesh.smsalerts.utils.DateUtils
 
-<<<<<<< HEAD
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.AlertDialog
@@ -71,8 +70,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
-=======
->>>>>>> origin/main
 @Composable
 fun HistoryScreen(
     viewModel: HistoryViewModel,
@@ -81,7 +78,6 @@ fun HistoryScreen(
 ) {
     val alerts by viewModel.alerts.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-<<<<<<< HEAD
     val status by viewModel.status.collectAsState()
     var alertToDelete by remember { mutableStateOf<EmergencyAlert?>(null) }
     var showClearAllDialog by remember { mutableStateOf(false) }
@@ -105,14 +101,6 @@ fun HistoryScreen(
             )
             if (status.isNotBlank()) Text(status, color = TextSecondary, modifier = Modifier.padding(12.dp))
             }
-=======
-
-    Scaffold(
-        topBar = {
-            SafeAlertTopBar(
-                title = "Alert History"
-            )
->>>>>>> origin/main
         },
         containerColor = BackgroundDark,
         modifier = modifier
@@ -182,19 +170,14 @@ fun HistoryScreen(
                     items(alerts, key = { it.alertId }) { alert ->
                         AlertHistoryItem(
                             alert = alert,
-<<<<<<< HEAD
                             onClick = { onAlertClick(alert.alertId) },
                             onDelete = { alertToDelete = alert }
-=======
-                            onClick = { onAlertClick(alert.alertId) }
->>>>>>> origin/main
                         )
                     }
                 }
             }
         }
     }
-<<<<<<< HEAD
 
     // Confirm Single Alert Deletion Dialog
     alertToDelete?.let { alert ->
@@ -271,19 +254,13 @@ fun HistoryScreen(
             containerColor = SurfaceCardElevated
         )
     }
-=======
->>>>>>> origin/main
 }
 
 @Composable
 fun AlertHistoryItem(
     alert: EmergencyAlert,
-<<<<<<< HEAD
     onClick: () -> Unit,
     onDelete: () -> Unit = {}
-=======
-    onClick: () -> Unit
->>>>>>> origin/main
 ) {
     val isSuccess = alert.status.contains("sent", ignoreCase = true) || alert.status.contains("dispatched", ignoreCase = true)
     val isFailed = alert.status.contains("fail", ignoreCase = true) || alert.status.contains("error", ignoreCase = true)
@@ -420,11 +397,7 @@ fun AlertHistoryItem(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-<<<<<<< HEAD
             // Footer Row: Location indicator & View Details / Delete action
-=======
-            // Footer Row: Location indicator & View Details action
->>>>>>> origin/main
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -456,7 +429,6 @@ fun AlertHistoryItem(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-<<<<<<< HEAD
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
@@ -489,23 +461,6 @@ fun AlertHistoryItem(
                             modifier = Modifier.size(16.dp)
                         )
                     }
-=======
-                    modifier = Modifier.clickable(onClick = onClick)
-                ) {
-                    Text(
-                        text = "View Details",
-                        color = EmergencyRed,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "View Details",
-                        tint = EmergencyRed,
-                        modifier = Modifier.size(14.dp)
-                    )
->>>>>>> origin/main
                 }
             }
         }

@@ -131,11 +131,7 @@ fun EmergencyTypeScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Text(
-<<<<<<< HEAD
                 text = "Choose the category that matches your emergency situation. Each category prepares an emergency message with your available GPS fix.",
-=======
-                text = "Choose the category that matches your emergency situation. Each category has an optimized, professional SMS template with your live GPS location.",
->>>>>>> origin/main
                 fontSize = 13.sp,
                 color = TextSecondary,
                 lineHeight = 18.sp,

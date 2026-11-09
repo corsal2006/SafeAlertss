@@ -10,11 +10,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
-<<<<<<< HEAD
 import com.siddesh.smsalerts.utils.PrivacyLog as Log
-=======
-import android.util.Log
->>>>>>> origin/main
 import androidx.core.app.NotificationCompat
 import com.siddesh.smsalerts.MainActivity
 import com.siddesh.smsalerts.R
@@ -28,10 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-<<<<<<< HEAD
 import kotlinx.coroutines.flow.first
-=======
->>>>>>> origin/main
 import kotlinx.coroutines.launch
 
 private const val TAG = "SafeAlerts/Protection"
@@ -59,7 +52,6 @@ class EmergencyProtectionService : Service() {
         val isServiceRunning: Boolean
             get() = _serviceRunningFlow.value
 
-<<<<<<< HEAD
         @Volatile var locationSessionActive = false
         fun startLocationSession(context: Context, incidentId: String) {
             try {
@@ -76,8 +68,6 @@ class EmergencyProtectionService : Service() {
                 context.startService(Intent(context, EmergencyProtectionService::class.java).setAction("REFRESH_SESSIONS"))
             } catch (e: Exception) { Log.w(TAG, "Foreground service refresh unavailable", e) }
         }
-=======
->>>>>>> origin/main
         fun startService(context: Context) {
             val intent = Intent(context, EmergencyProtectionService::class.java).apply {
                 action = ACTION_START_PROTECTION
@@ -94,10 +84,7 @@ class EmergencyProtectionService : Service() {
         }
 
         fun stopService(context: Context) {
-<<<<<<< HEAD
             if (locationSessionActive) return
-=======
->>>>>>> origin/main
             val intent = Intent(context, EmergencyProtectionService::class.java).apply {
                 action = ACTION_STOP_PROTECTION
             }
@@ -112,10 +99,7 @@ class EmergencyProtectionService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var shakeDetector: ShakeDetector
     private lateinit var preferences: UserPreferencesDataStore
-<<<<<<< HEAD
     private var hasStarted = false
-=======
->>>>>>> origin/main
     private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -123,12 +107,9 @@ class EmergencyProtectionService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "EmergencyProtectionService onCreate")
-<<<<<<< HEAD
         // Promote promptly to comply with Android foreground service startup timing.
         promoteToForeground()
 
-=======
->>>>>>> origin/main
         preferences = UserPreferencesDataStore(this)
 
         // Acquire partial WakeLock so accelerometer sensor events are delivered while screen is locked
@@ -169,7 +150,6 @@ class EmergencyProtectionService : Service() {
                     shakeDetector.startListening()
                 } else {
                     shakeDetector.stopListening()
-<<<<<<< HEAD
                     if (hasStarted && !locationSessionActive && !prefs.bluetoothMeshEnabled) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
                 }
 
@@ -178,16 +158,12 @@ class EmergencyProtectionService : Service() {
                     com.siddesh.smsalerts.mesh.BleMeshManager.getInstance(applicationContext).startMesh()
                 } else {
                     com.siddesh.smsalerts.mesh.BleMeshManager.getInstance(applicationContext).stopMesh()
-=======
-                    stopSelf()
->>>>>>> origin/main
                 }
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-<<<<<<< HEAD
         hasStarted = true
         if (intent?.action == "REFRESH_SESSIONS") {
             serviceScope.launch {
@@ -198,24 +174,18 @@ class EmergencyProtectionService : Service() {
             }
             return START_NOT_STICKY
         }
-=======
->>>>>>> origin/main
         if (intent?.action == ACTION_STOP_PROTECTION) {
             Log.d(TAG, "Stopping EmergencyProtectionService per user stop action")
             serviceScope.launch {
                 preferences.updateShakeToAlertEnabled(false)
             }
-<<<<<<< HEAD
             com.siddesh.smsalerts.mesh.BleMeshManager.getInstance(applicationContext).stopMesh()
-=======
->>>>>>> origin/main
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             _serviceRunningFlow.value = false
             return START_NOT_STICKY
         }
 
-<<<<<<< HEAD
         if (intent?.action == "LOCATION_SESSION") {
             locationSessionActive = true
             promoteToForeground()
@@ -226,20 +196,11 @@ class EmergencyProtectionService : Service() {
         promoteToForeground()
 
         // Preference collection decides which optional features are actually enabled.
-=======
-        createNotificationChannel()
-        val notification = buildPersistentNotification()
-        startForeground(NOTIFICATION_ID, notification)
-        _serviceRunningFlow.value = true
-
-        shakeDetector.startListening()
->>>>>>> origin/main
         Log.i(TAG, "EmergencyProtectionService active in foreground (persistent notification posted)")
 
         return START_STICKY
     }
 
-<<<<<<< HEAD
     /**
      * Promotes the service to the foreground in an Android lifecycle-safe and API-compatible manner.
      * Guards FOREGROUND_SERVICE_TYPE_SPECIAL_USE to API 34+ (UPSIDE_DOWN_CAKE) and provides a safe fallback.
@@ -297,12 +258,6 @@ class EmergencyProtectionService : Service() {
         if (::shakeDetector.isInitialized) shakeDetector.stopListening()
         LiveLocationManager.getInstance(this).stopLiveSharing()
         com.siddesh.smsalerts.mesh.BleMeshManager.getInstance(applicationContext).stopMesh()
-=======
-    override fun onDestroy() {
-        super.onDestroy()
-        _serviceRunningFlow.value = false
-        shakeDetector.stopListening()
->>>>>>> origin/main
 
         try {
             if (wakeLock?.isHeld == true) {
@@ -321,11 +276,7 @@ class EmergencyProtectionService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-<<<<<<< HEAD
                 "SafeAlerts Emergency Protection",
-=======
-                "Safe Alerts Emergency Protection",
->>>>>>> origin/main
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Shows persistent status while background emergency triggers are active"
@@ -358,17 +309,10 @@ class EmergencyProtectionService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-<<<<<<< HEAD
             .setContentTitle(getString(R.string.app_name))
             .setContentText(if (locationSessionActive) "Location sharing session active" else "Emergency protection service active")
             .setSubText("Emergency Protection")
             .setSmallIcon(R.drawable.ic_notification_shield)
-=======
-            .setContentTitle("Safe Alerts")
-            .setContentText("Emergency protection is active. Shake detection is running.")
-            .setSubText("Emergency Protection")
-            .setSmallIcon(R.drawable.ic_app_logo)
->>>>>>> origin/main
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)

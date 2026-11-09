@@ -45,22 +45,16 @@ class HomeViewModel @JvmOverloads constructor(
     private val locationService: LocationService = LocationService(application)
 ) : AndroidViewModel(application) {
 
-<<<<<<< HEAD
     private val emergencyManager = com.siddesh.smsalerts.service.EmergencyManager.getInstance(application)
     val locationRepository = com.siddesh.smsalerts.data.location.LocationRepository.getInstance(application)
-=======
->>>>>>> origin/main
     private val smsSender = SmsSender(application)
     private val preferencesDataStore = UserPreferencesDataStore(application)
     val safetyCheckInManager = SafetyCheckInManager(application)
 
     val userProfile: StateFlow<UserProfile?> = userRepository.userProfile
-<<<<<<< HEAD
     val currentLocation: StateFlow<com.siddesh.smsalerts.data.location.LocationResult?> = locationRepository.currentLocation
     val lastValidLocation: StateFlow<com.siddesh.smsalerts.data.location.LocationResult.Success?> = locationRepository.lastValidLocation
     val isLocating: StateFlow<Boolean> = locationRepository.isLocating
-=======
->>>>>>> origin/main
 
     private val _contactsCount = MutableStateFlow(0)
     val contactsCount: StateFlow<Int> = _contactsCount.asStateFlow()
@@ -87,10 +81,7 @@ class HomeViewModel @JvmOverloads constructor(
     val userPreferences: StateFlow<AppUserPreferences> = _userPreferences.asStateFlow()
 
     val safetyCheckInState: StateFlow<SafetyCheckInState> = safetyCheckInManager.checkInState
-<<<<<<< HEAD
     val activeIncident: StateFlow<com.siddesh.smsalerts.data.model.EmergencyIncident?> = emergencyManager.activeIncident
-=======
->>>>>>> origin/main
 
     private val _serviceReadiness = MutableStateFlow(ServiceReadinessState())
     val serviceReadiness: StateFlow<ServiceReadinessState> = _serviceReadiness.asStateFlow()
@@ -126,10 +117,7 @@ class HomeViewModel @JvmOverloads constructor(
         val hasLoc = locationService.hasLocationPermission() && locationService.isGpsEnabled()
         _isLocationReady.value = hasLoc
         val hasSms = smsSender.hasSmsPermission()
-<<<<<<< HEAD
         emergencyManager.refreshActiveIncident()
-=======
->>>>>>> origin/main
 
         val userId = authRepository.currentUserId
         if (userId != null) {
@@ -156,7 +144,6 @@ class HomeViewModel @JvmOverloads constructor(
     }
 
     private fun recomputeReadiness(contactsCount: Int, hasSms: Boolean, hasLoc: Boolean) {
-<<<<<<< HEAD
         val hasContacts = contactsCount > 0
         val isReady = hasContacts
         val title = if (isReady) "SYSTEM ACTIVE" else "SETUP REQUIRED"
@@ -164,30 +151,13 @@ class HomeViewModel @JvmOverloads constructor(
             !hasContacts -> "Configure trusted contacts to receive emergency alerts."
             !hasLoc -> "Location permission required for GPS dispatch."
             else -> "Ready for emergency dispatch via SMS, Cloud and BLE mesh."
-=======
-        val isReady = contactsCount > 0 && hasSms
-        val title = when {
-            contactsCount == 0 -> "Setup Required: No Contacts"
-            !hasSms -> "Setup Required: SMS Permission"
-            else -> "SYSTEM READY"
-        }
-        val subtitle = when {
-            contactsCount == 0 -> "Add at least 1 trusted contact to broadcast emergency alerts"
-            !hasSms -> "Grant SEND_SMS permission for automatic direct dispatch"
-            !hasLoc -> "Active (Location disabled - alerts will send without coordinates)"
-            else -> "Your emergency contacts are available."
->>>>>>> origin/main
         }
 
         _serviceReadiness.value = ServiceReadinessState(
             isReady = isReady,
             title = title,
             subtitle = subtitle,
-<<<<<<< HEAD
             hasContacts = hasContacts,
-=======
-            hasContacts = contactsCount > 0,
->>>>>>> origin/main
             hasSmsPermission = hasSms,
             hasLocationReady = hasLoc
         )
@@ -230,7 +200,6 @@ class HomeViewModel @JvmOverloads constructor(
         }
     }
 
-<<<<<<< HEAD
     fun startSafetyCheckIn(durationMinutes: Int, graceMinutes: Int = 2) {
         safetyCheckInManager.startCheckIn(durationMinutes, graceMinutes)
     }
@@ -241,17 +210,12 @@ class HomeViewModel @JvmOverloads constructor(
 
     fun resumeSafetyCheckIn() {
         safetyCheckInManager.resumeCheckIn()
-=======
-    fun startSafetyCheckIn(durationMinutes: Int) {
-        safetyCheckInManager.startCheckIn(durationMinutes)
->>>>>>> origin/main
     }
 
     fun markSafeOrCancelCheckIn() {
         safetyCheckInManager.markSafeOrCancel()
     }
 
-<<<<<<< HEAD
     fun resolveEscalatedCheckIn() {
         safetyCheckInManager.resolveEscalatedCheckIn()
     }
@@ -264,17 +228,11 @@ class HomeViewModel @JvmOverloads constructor(
                 locationRepository.refreshLocation()
             }
         }
-=======
-    fun refreshLocation() {
-        val hasLoc = locationService.hasLocationPermission() && locationService.isGpsEnabled()
-        _isLocationReady.value = hasLoc
->>>>>>> origin/main
     }
 
     fun refreshUser() {
         refreshDashboard()
     }
-<<<<<<< HEAD
 
     fun resolveActiveEmergency(incidentId: String) {
         emergencyManager.resolveEmergency(incidentId)
@@ -286,6 +244,4 @@ class HomeViewModel @JvmOverloads constructor(
         emergencyManager.resetToIdle()
         refreshDashboard()
     }
-=======
->>>>>>> origin/main
 }

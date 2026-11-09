@@ -24,10 +24,7 @@ class AlertsRepository {
             .document(userId)
             .collection("alerts")
             .orderBy("createdAt", Query.Direction.DESCENDING)
-<<<<<<< HEAD
             .limit(100)
-=======
->>>>>>> origin/main
 
         val listenerRegistration = collectionRef.addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -36,11 +33,7 @@ class AlertsRepository {
                     .document(userId)
                     .collection("alerts")
 
-<<<<<<< HEAD
                 fallbackRef.limit(100).get().addOnSuccessListener { s ->
-=======
-                fallbackRef.get().addOnSuccessListener { s ->
->>>>>>> origin/main
                     val list = s.documents.mapNotNull { parseAlert(it) }
                         .sortedByDescending { it.createdAt }
                     trySend(list)
@@ -198,8 +191,5 @@ class AlertsRepository {
             Resource.Error(e.localizedMessage ?: "Failed to retrieve alert details.", e)
         }
     }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
 }

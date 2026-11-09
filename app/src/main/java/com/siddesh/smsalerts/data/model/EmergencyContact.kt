@@ -1,10 +1,7 @@
 package com.siddesh.smsalerts.data.model
 
-<<<<<<< HEAD
 import org.json.JSONObject
 
-=======
->>>>>>> origin/main
 data class EmergencyContact(
     val id: String = "",
     val name: String = "",
@@ -27,7 +24,6 @@ data class EmergencyContact(
             "updatedAt" to updatedAt
         )
     }
-<<<<<<< HEAD
 
     fun toJson(): String {
         val json = JSONObject()
@@ -61,6 +57,4 @@ data class EmergencyContact(
             }
         }
     }
-=======
->>>>>>> origin/main
 }

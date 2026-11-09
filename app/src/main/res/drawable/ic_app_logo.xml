@@ -5,7 +5,6 @@
     android:viewportWidth="120"
     android:viewportHeight="120">
 
-<<<<<<< HEAD
     <!-- Outer Protective Aura / Translucent Pulse Ring -->
     <path
         android:strokeColor="#FF2A55"
@@ -67,40 +66,4 @@
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:pathData="M33,72 L44,72 L49,58 L55,86 L62,60 L68,76 L72,72 L87,72" />
-=======
-    <!-- Outer Protective Beacon Ring -->
-    <path
-        android:strokeColor="#FF2A55"
-        android:strokeWidth="2"
-        android:strokeAlpha="0.3"
-        android:pathData="M60,10 C87.6,10 110,32.4 110,60 C110,87.6 87.6,110 60,110 C32.4,110 10,87.6 10,60 C10,32.4 32.4,10 60,10 Z" />
-
-    <!-- Main Shield (Crimson / Coral Emergency Red) -->
-    <path
-        android:fillColor="#E11D48"
-        android:pathData="M60,18 C74,21 86,23 92,28 C92,58 79,83 60,96 C41,83 28,58 28,28 C34,23 46,21 60,18 Z" />
-
-    <!-- Right Shield Shading / 3D Facet -->
-    <path
-        android:fillColor="#BE123C"
-        android:pathData="M60,18 C74,21 86,23 92,28 C92,58 79,83 60,96 L60,18 Z" />
-
-    <!-- SMS Message Bubble Contour inside the Shield -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M44,36 C39.58,36 36,39.58 36,44 L36,62 C36,66.42 39.58,70 44,70 L49,70 L49,76 C49,76.8 49.9,77.3 50.5,76.7 L57.2,70 L76,70 C80.42,70 84,66.42 84,62 L84,44 C84,39.58 80.42,36 76,36 Z" />
-
-    <!-- Emergency Telemetry Signal / Heartbeat Pulse Wave inside SMS -->
-    <path
-        android:strokeColor="#E11D48"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M43,53 L49,53 L53,44 L58,62 L63,46 L67,55 L69,53 L75,53" />
-
-    <!-- Active Safety Beacon -->
-    <path
-        android:fillColor="#38BDF8"
-        android:pathData="M60,26 A2.5,2.5 0 1,0 60,31 A2.5,2.5 0 1,0 60,26 Z" />
->>>>>>> origin/main
 </vector>

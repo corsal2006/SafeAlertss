@@ -4,10 +4,7 @@ import com.siddesh.smsalerts.data.model.EmergencyAlert
 import com.siddesh.smsalerts.data.voice.VoiceEmergencyDetector
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-<<<<<<< HEAD
 import org.junit.Assert.assertNull
-=======
->>>>>>> origin/main
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,45 +40,12 @@ class AdvancedEmergencyTriggersTest {
 
     @Test
     fun voiceEmergencyPhrases_exactAndNormalizedMatches() {
-<<<<<<< HEAD
         assertEquals(listOf("HELP ME"), VoiceEmergencyDetector.EMERGENCY_PHRASES)
         assertEquals("HELP ME", VoiceEmergencyDetector.matchPhrase("Please, help   me!"))
         assertNull(VoiceEmergencyDetector.matchPhrase("helpful memory"))
         assertNull(VoiceEmergencyDetector.matchPhrase("help"))
         assertNull(VoiceEmergencyDetector.matchPhrase("emergency"))
         assertNull(VoiceEmergencyDetector.matchPhrase("hello how are you"))
-=======
-        val supportedPhrases = VoiceEmergencyDetector.EMERGENCY_PHRASES
-
-        assertTrue(supportedPhrases.contains("HELP"))
-        assertTrue(supportedPhrases.contains("HELP ME"))
-        assertTrue(supportedPhrases.contains("I NEED HELP"))
-        assertTrue(supportedPhrases.contains("EMERGENCY"))
-        assertTrue(supportedPhrases.contains("CALL FOR HELP"))
-
-        // Test phrase recognition matcher
-        fun matchesEmergency(spokenText: String): Boolean {
-            val normalized = spokenText.trim().uppercase()
-            return supportedPhrases.any { trigger ->
-                normalized == trigger || normalized.contains(trigger)
-            }
-        }
-
-        // Positive tests
-        assertTrue(matchesEmergency("help"))
-        assertTrue(matchesEmergency("HELP"))
-        assertTrue(matchesEmergency("help me!"))
-        assertTrue(matchesEmergency("please help me now"))
-        assertTrue(matchesEmergency("I need help right now"))
-        assertTrue(matchesEmergency("EMERGENCY!"))
-        assertTrue(matchesEmergency("Call for help please"))
-
-        // Negative tests
-        assertFalse(matchesEmergency("hello how are you"))
-        assertFalse(matchesEmergency("good morning"))
-        assertFalse(matchesEmergency("what is the weather today"))
-        assertFalse(matchesEmergency("turn on the flashlight"))
->>>>>>> origin/main
     }
 
     @Test

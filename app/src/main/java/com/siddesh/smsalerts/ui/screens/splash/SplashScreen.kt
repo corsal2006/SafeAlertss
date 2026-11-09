@@ -122,11 +122,7 @@ fun SplashScreen(
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_app_logo),
-<<<<<<< HEAD
                         contentDescription = "SafeAlerts Logo",
-=======
-                        contentDescription = "Safe Alerts Logo",
->>>>>>> origin/main
                         tint = Color.White,
                         modifier = Modifier.size(50.dp)
                     )
@@ -136,11 +132,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-<<<<<<< HEAD
                 text = "SafeAlerts",
-=======
-                text = "Safe Alerts",
->>>>>>> origin/main
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -150,11 +142,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-<<<<<<< HEAD
                 text = "PERSONAL EMERGENCY ALERT SYSTEM",
-=======
-                text = "SMS EMERGENCY ALERT SYSTEM",
->>>>>>> origin/main
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = EmergencyRed,

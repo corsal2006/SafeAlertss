@@ -6,14 +6,9 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-<<<<<<< HEAD
 import com.siddesh.smsalerts.utils.PrivacyLog as Log
 import java.util.Locale
 import kotlinx.coroutines.flow.asStateFlow
-=======
-import android.util.Log
-import java.util.Locale
->>>>>>> origin/main
 
 /**
  * Android Speech Recognizer manager for detecting emergency voice phrases ("HELP", "HELP ME", etc.).
@@ -23,19 +18,14 @@ import java.util.Locale
 class VoiceEmergencyDetector(
     private val context: Context,
     private val onEmergencyPhraseDetected: (phrase: String) -> Unit,
-<<<<<<< HEAD
     private val onError: (String) -> Unit = {},
     var isTestMode: Boolean = false,
     var onTestResult: ((spoken: String, matchedPhrase: String?) -> Unit)? = null
-=======
-    private val onError: (String) -> Unit = {}
->>>>>>> origin/main
 ) {
 
     companion object {
         private const val TAG = "VoiceEmergencyDetector"
 
-<<<<<<< HEAD
         val DEFAULT_EMERGENCY_PHRASES = listOf("HELP ME")
         val EMERGENCY_PHRASES = DEFAULT_EMERGENCY_PHRASES
 
@@ -72,19 +62,6 @@ class VoiceEmergencyDetector(
     private var requested = false
     private var lastActivation = 0L
     private var failures = 0
-=======
-        val EMERGENCY_PHRASES = listOf(
-            "HELP",
-            "HELP ME",
-            "I NEED HELP",
-            "EMERGENCY",
-            "CALL FOR HELP",
-            "SAVE ME",
-            "ASSISTANCE"
-        )
-    }
-
->>>>>>> origin/main
     private var speechRecognizer: SpeechRecognizer? = null
     var isListening: Boolean = false
         private set
@@ -94,7 +71,6 @@ class VoiceEmergencyDetector(
     }
 
     fun startListening() {
-<<<<<<< HEAD
         if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
             handler.post { startListening() }
             return
@@ -111,17 +87,11 @@ class VoiceEmergencyDetector(
             _status.value = "Voice recognition unavailable on this device"
             requested = false
             onError(_status.value)
-=======
-        if (isListening) return
-        if (!isSupported()) {
-            onError("Speech recognition is unavailable on this device.")
->>>>>>> origin/main
             return
         }
 
         try {
             destroyRecognizer()
-<<<<<<< HEAD
             speechRecognizer = try {
                 if (android.os.Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
                     SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
@@ -131,46 +101,30 @@ class VoiceEmergencyDetector(
             } catch (_: Exception) {
                 SpeechRecognizer.createSpeechRecognizer(context)
             }?.apply {
-=======
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
->>>>>>> origin/main
                 setRecognitionListener(createListener())
             }
 
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-<<<<<<< HEAD
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
-=======
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
->>>>>>> origin/main
             }
 
             speechRecognizer?.startListening(intent)
             isListening = true
-<<<<<<< HEAD
             _status.value = "Listening on this screen: say help me"
             Log.d(TAG, "Voice recognition started")
         } catch (e: Exception) {
             isListening = false
             requested = false
             _status.value = "Voice unavailable: ${e.javaClass.simpleName}"
-=======
-            Log.d(TAG, "Voice recognition started")
-        } catch (e: Exception) {
-            isListening = false
->>>>>>> origin/main
             Log.e(TAG, "Failed to start speech recognition: ${e.message}", e)
             onError("Unable to initialize speech recognition: ${e.localizedMessage}")
         }
     }
 
     fun stopListening() {
-<<<<<<< HEAD
         if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
             handler.post { stopListening() }
             return
@@ -178,9 +132,6 @@ class VoiceEmergencyDetector(
         requested = false
         handler.removeCallbacksAndMessages(null)
         _status.value = "Voice off"
-=======
-        if (!isListening) return
->>>>>>> origin/main
         try {
             speechRecognizer?.stopListening()
         } catch (e: Exception) {
@@ -235,7 +186,6 @@ class VoiceEmergencyDetector(
                     else -> "Recognition error ($error)"
                 }
                 Log.w(TAG, "Speech error code=$error: $reason")
-<<<<<<< HEAD
                 if (error in listOf(SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT)) {
                     _status.value = "Listening: say \"help me\""
                     if (requested) {
@@ -249,9 +199,6 @@ class VoiceEmergencyDetector(
                     }
                 }
                 // Only propagate critical permission errors
-=======
-                // Only propagate critical permission or client errors
->>>>>>> origin/main
                 if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
                     onError("Microphone permission was denied.")
                 }
@@ -260,7 +207,6 @@ class VoiceEmergencyDetector(
             override fun onResults(results: Bundle?) {
                 isListening = false
                 val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-<<<<<<< HEAD
                 if (!matches.isNullOrEmpty()) {
                     checkMatches(matches)
                 } else {
@@ -272,41 +218,16 @@ class VoiceEmergencyDetector(
 
             override fun onPartialResults(partialResults: Bundle?) {
                 // Only final recognition results can trigger an incident.
-=======
-                checkMatches(matches)
-            }
-
-            override fun onPartialResults(partialResults: Bundle?) {
-                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                checkMatches(matches)
->>>>>>> origin/main
             }
 
             override fun onEvent(eventType: Int, params: Bundle?) {}
         }
     }
 
-<<<<<<< HEAD
     fun matchesEmergencyPhrase(spokenText: String): String? = matchPhrase(spokenText, getAllPhrases())
 
     private fun restart() {
         handler.postDelayed({ if (requested && com.siddesh.smsalerts.SafeAlertApp.isVisible) startListening() }, 1500)
-=======
-    fun matchesEmergencyPhrase(spokenText: String): String? {
-        val normalized = spokenText.trim().uppercase(Locale.getDefault())
-        val cleaned = normalized.replace(Regex("[^A-Z0-9 ]"), " ").trim()
-        val tokens = cleaned.split("\\s+".toRegex())
-
-        for (phrase in EMERGENCY_PHRASES) {
-            val phraseTokens = phrase.split(" ")
-            if (phraseTokens.size == 1) {
-                if (tokens.contains(phrase)) return phrase
-            } else {
-                if (cleaned.contains(phrase)) return phrase
-            }
-        }
-        return null
->>>>>>> origin/main
     }
 
     private fun checkMatches(matches: ArrayList<String>?) {
@@ -314,7 +235,6 @@ class VoiceEmergencyDetector(
 
         for (candidate in matches) {
             val matchedPhrase = matchesEmergencyPhrase(candidate)
-<<<<<<< HEAD
             if (isTestMode) {
                 onTestResult?.invoke(candidate, matchedPhrase)
                 if (matchedPhrase != null) {
@@ -325,10 +245,6 @@ class VoiceEmergencyDetector(
                 val now = android.os.SystemClock.elapsedRealtime()
                 if (lastActivation > 0L && now - lastActivation < 30_000) return
                 lastActivation = now
-=======
-            if (matchedPhrase != null) {
-                Log.i(TAG, "VOICE EMERGENCY COMMAND DETECTED: '$matchedPhrase' in '$candidate'")
->>>>>>> origin/main
                 stopListening()
                 onEmergencyPhraseDetected(matchedPhrase)
                 return

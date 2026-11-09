@@ -19,10 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-<<<<<<< HEAD
 import androidx.compose.ui.draw.clip
-=======
->>>>>>> origin/main
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -48,10 +45,7 @@ fun EmergencyTriggersScreen(
     val preferences by preferencesDataStore.preferencesFlow.collectAsState(
         initial = com.siddesh.smsalerts.data.preferences.AppUserPreferences()
     )
-<<<<<<< HEAD
     val realProfile by com.siddesh.smsalerts.data.repository.UserRepository.getInstance().userProfile.collectAsState()
-=======
->>>>>>> origin/main
 
     // Hardware checks
     val isShakeSupported = remember { ShakeDetector(context) {}.isSupported() }
@@ -63,11 +57,7 @@ fun EmergencyTriggersScreen(
     ) { granted ->
         if (granted) {
             scope.launch { preferencesDataStore.updateVoiceAlert(true) }
-<<<<<<< HEAD
             Toast.makeText(context, "Voice trigger enabled. Say HELP ME on Home.", Toast.LENGTH_SHORT).show()
-=======
-            Toast.makeText(context, "Voice trigger enabled. Say HELP to test.", Toast.LENGTH_SHORT).show()
->>>>>>> origin/main
         } else {
             scope.launch { preferencesDataStore.updateVoiceAlert(false) }
             Toast.makeText(context, "Microphone permission is required for voice commands.", Toast.LENGTH_LONG).show()
@@ -78,7 +68,6 @@ fun EmergencyTriggersScreen(
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ ->
-<<<<<<< HEAD
         if (preferences.shakeToAlertEnabled) {
             com.siddesh.smsalerts.service.EmergencyProtectionService.startService(context)
         }
@@ -122,9 +111,6 @@ fun EmergencyTriggersScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
             voiceDetector.stopListening()
         }
-=======
-        com.siddesh.smsalerts.service.EmergencyProtectionService.startService(context)
->>>>>>> origin/main
     }
 
     Scaffold(
@@ -157,12 +143,8 @@ fun EmergencyTriggersScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-<<<<<<< HEAD
                 .padding(horizontal = 20.dp, vertical = 12.dp)
                 .navigationBarsPadding(),
-=======
-                .padding(horizontal = 20.dp, vertical = 12.dp),
->>>>>>> origin/main
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // INFO BANNER
@@ -273,22 +255,14 @@ fun EmergencyTriggersScreen(
                         // Required Shakes Selection
                         Text(
                             text = "REQUIRED SHAKES: ${preferences.requiredShakes}",
-<<<<<<< HEAD
                             color = TextSecondary,
-=======
-                            color = TextMuted,
->>>>>>> origin/main
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-<<<<<<< HEAD
                             listOf(5).forEach { count ->
-=======
-                            listOf(3, 4, 5).forEach { count ->
->>>>>>> origin/main
                                 FilterChip(
                                     selected = preferences.requiredShakes == count,
                                     onClick = {
@@ -305,11 +279,7 @@ fun EmergencyTriggersScreen(
                         // Shake Cooldown
                         Text(
                             text = "TRIGGER COOLDOWN: ${preferences.shakeCooldownSeconds}s",
-<<<<<<< HEAD
                             color = TextSecondary,
-=======
-                            color = TextMuted,
->>>>>>> origin/main
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp
@@ -327,7 +297,6 @@ fun EmergencyTriggersScreen(
                                 )
                             }
                         }
-<<<<<<< HEAD
 
                         Spacer(modifier = Modifier.height(14.dp))
                         HorizontalDivider(color = CardBorder.copy(alpha = 0.5f))
@@ -404,8 +373,6 @@ fun EmergencyTriggersScreen(
                                 }
                             }
                         }
-=======
->>>>>>> origin/main
                     }
                 }
             }
@@ -430,11 +397,7 @@ fun EmergencyTriggersScreen(
                                 )
                                 Text(
                                     text = if (isVoiceSupported) {
-<<<<<<< HEAD
                                         "Say help me while Home is visible. Uses your microphone; if on-device recognition is unavailable, your phone's speech provider may process audio online."
-=======
-                                        "Say HELP, HELP ME, or EMERGENCY to start emergency dispatch."
->>>>>>> origin/main
                                     } else {
                                         "Speech recognition is unavailable on this device."
                                     },
@@ -462,7 +425,6 @@ fun EmergencyTriggersScreen(
                         )
                     }
 
-<<<<<<< HEAD
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider(color = CardBorder.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(10.dp))
@@ -590,19 +552,12 @@ fun EmergencyTriggersScreen(
                     Text(
                         text = "Privacy: Voice recognition uses your microphone on Home or during a speech test. On-device recognition is preferred. Otherwise your phone's speech provider may send audio to its servers under its own privacy policy. SafeAlerts does not save raw microphone recordings. Turn off Voice Trigger to stop automatic listening on Home.",
                         color = TextSecondary,
-=======
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "Privacy: Safe Alerts uses on-device Android speech recognition only when active. Microphone audio is never recorded to disk or uploaded.",
-                        color = TextMuted,
->>>>>>> origin/main
                         fontSize = 11.sp,
                         lineHeight = 15.sp
                     )
                 }
             }
 
-<<<<<<< HEAD
             // 4. EMERGENCY SMS PREVIEW (Configurable template)
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
@@ -881,8 +836,6 @@ fun EmergencyTriggersScreen(
                 }
             }
 
-=======
->>>>>>> origin/main
             // 4. EMERGENCY COUNTDOWN & CONFIRMATION
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
@@ -918,12 +871,8 @@ fun EmergencyTriggersScreen(
                                 onClick = {
                                     scope.launch { preferencesDataStore.updateCountdownDuration(sec) }
                                 },
-<<<<<<< HEAD
                                 label = { Text("${sec}s", maxLines = 1) },
                                 modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-=======
-                                label = { Text("$sec seconds") },
->>>>>>> origin/main
                                 colors = chipColors()
                             )
                         }
@@ -969,7 +918,6 @@ fun EmergencyTriggersScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-<<<<<<< HEAD
 
         if (showAddPhraseDialog) {
             AlertDialog(
@@ -1216,8 +1164,6 @@ private fun EmergencyServiceItem(
                 Text("Call Now", fontSize = 11.sp, color = Color.White, maxLines = 1)
             }
         }
-=======
->>>>>>> origin/main
     }
 }
 

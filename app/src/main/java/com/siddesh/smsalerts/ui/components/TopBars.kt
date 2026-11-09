@@ -25,11 +25,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-<<<<<<< HEAD
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
-=======
->>>>>>> origin/main
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -61,12 +58,8 @@ fun SafeAlertMainTopBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-<<<<<<< HEAD
                         .size(48.dp)
                         .clickable(onClickLabel = "About SafeAlerts", onClick = onNotificationsClick)
-=======
-                        .size(36.dp)
->>>>>>> origin/main
                         .clip(RoundedCornerShape(10.dp))
                         .background(EmergencyRed.copy(alpha = 0.15f))
                         .border(1.dp, EmergencyRed.copy(alpha = 0.4f), RoundedCornerShape(10.dp)),
@@ -74,11 +67,7 @@ fun SafeAlertMainTopBar(
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_app_logo),
-<<<<<<< HEAD
                         contentDescription = "SafeAlerts Logo",
-=======
-                        contentDescription = "SafeAlert Logo",
->>>>>>> origin/main
                         tint = Color.Unspecified,
                         modifier = Modifier.size(24.dp)
                     )
@@ -86,7 +75,6 @@ fun SafeAlertMainTopBar(
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-<<<<<<< HEAD
                 Text(
                     text = androidx.compose.ui.text.buildAnnotatedString {
                         append("Personal Emergency ")
@@ -97,23 +85,6 @@ fun SafeAlertMainTopBar(
                     fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary,
                     maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-=======
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "SMS Emergency",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Alert",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = EmergencyRed
-                    )
-                }
->>>>>>> origin/main
             }
         },
         actions = {
@@ -130,20 +101,12 @@ fun SafeAlertMainTopBar(
             Box(
                 modifier = Modifier
                     .padding(end = 12.dp)
-<<<<<<< HEAD
                     .size(48.dp)
                     .clip(CircleShape)
                     .background(SurfaceCard)
                     .border(1.5.dp, EmergencyRed, CircleShape)
                     .clickable(onClickLabel = "Open profile") { onProfileClick() }
                     .semantics { contentDescription = "Open profile" },
-=======
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceCard)
-                    .border(1.5.dp, EmergencyRed, CircleShape)
-                    .clickable { onProfileClick() },
->>>>>>> origin/main
                 contentAlignment = Alignment.Center
             ) {
                 if (!userProfile?.photoUrl.isNullOrBlank()) {
@@ -182,10 +145,7 @@ fun SafeAlertTopBar(
     title: String,
     showBackButton: Boolean = false,
     onBackClick: () -> Unit = {},
-<<<<<<< HEAD
     actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
-=======
->>>>>>> origin/main
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -209,10 +169,7 @@ fun SafeAlertTopBar(
                 }
             }
         },
-<<<<<<< HEAD
         actions = actions,
-=======
->>>>>>> origin/main
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = BackgroundDark,
             titleContentColor = TextPrimary

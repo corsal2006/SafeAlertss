@@ -5,7 +5,6 @@ sealed class LocationResult {
         val latitude: Double,
         val longitude: Double,
         val accuracy: Float,
-<<<<<<< HEAD
         val mapsUrl: String = generateMapsUrl(latitude, longitude),
         val timestamp: Long = 0L,
         val source: String = "fused",
@@ -45,16 +44,11 @@ sealed class LocationResult {
             else -> "Stale location fix (${formatAge()})"
         }
     }
-=======
-        val mapsUrl: String = generateMapsUrl(latitude, longitude)
-    ) : LocationResult()
->>>>>>> origin/main
 
     object PermissionDenied : LocationResult()
     object GpsDisabled : LocationResult()
     data class Unavailable(val reason: String) : LocationResult()
 
-<<<<<<< HEAD
     fun explanation(): String = when (this) {
         is Success -> description
         PermissionDenied -> "Location permission denied. Allow precise location in Android app settings."
@@ -65,11 +59,6 @@ sealed class LocationResult {
     companion object {
         fun generateMapsUrl(latitude: Double, longitude: Double): String {
             return "https://www.google.com/maps?q=$latitude,$longitude"
-=======
-    companion object {
-        fun generateMapsUrl(latitude: Double, longitude: Double): String {
-            return "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude"
->>>>>>> origin/main
         }
     }
 }

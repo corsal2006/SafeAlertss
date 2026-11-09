@@ -28,18 +28,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-<<<<<<< HEAD
 import androidx.compose.material.icons.automirrored.filled.Chat
-=======
->>>>>>> origin/main
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocationOn
-<<<<<<< HEAD
 import androidx.compose.material.icons.filled.Mic
-=======
->>>>>>> origin/main
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
@@ -47,33 +41,22 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShareLocation
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TouchApp
-<<<<<<< HEAD
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
-=======
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.WifiOff
->>>>>>> origin/main
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-<<<<<<< HEAD
 import androidx.compose.material3.CircularProgressIndicator
-=======
->>>>>>> origin/main
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-<<<<<<< HEAD
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.text.style.TextAlign
-=======
->>>>>>> origin/main
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -126,15 +109,11 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToAbout: () -> Unit,
-<<<<<<< HEAD
     onNavigateToTriggers: () -> Unit = onNavigateToSettings,
     onNavigateToWalkieTalkie: () -> Unit = {},
     onNavigateToWomensSafety: () -> Unit = {},
     onNavigateToTrustedCircle: () -> Unit = {},
     onNavigateToIncident: (String) -> Unit = {}
-=======
-    onNavigateToTriggers: () -> Unit = onNavigateToSettings
->>>>>>> origin/main
 ) {
     val context = LocalContext.current
     val userProfile by homeViewModel.userProfile.collectAsState()
@@ -146,7 +125,6 @@ fun HomeScreen(
     val requireHold by homeViewModel.requireHold.collectAsState()
     val serviceReadiness by homeViewModel.serviceReadiness.collectAsState()
     val safetyCheckIn by homeViewModel.safetyCheckInState.collectAsState()
-<<<<<<< HEAD
     val activeIncident by homeViewModel.activeIncident.collectAsState()
 
     val emergencyManager = remember { com.siddesh.smsalerts.service.EmergencyManager.getInstance(context) }
@@ -163,10 +141,6 @@ fun HomeScreen(
             else -> {}
         }
     }
-=======
-
-    val emergencyManager = remember { com.siddesh.smsalerts.service.EmergencyManager.getInstance(context) }
->>>>>>> origin/main
 
     // Voice Detector Lifecycle Integration
     val voiceDetector = remember {
@@ -178,20 +152,13 @@ fun HomeScreen(
         )
     }
 
-<<<<<<< HEAD
     val voiceStatus by voiceDetector.status.collectAsState()
 
-=======
->>>>>>> origin/main
     LaunchedEffect(userPreferences.shakeToAlertEnabled) {
         if (userPreferences.shakeToAlertEnabled) {
             com.siddesh.smsalerts.service.EmergencyProtectionService.startService(context)
         } else {
-<<<<<<< HEAD
             if (!com.siddesh.smsalerts.service.EmergencyProtectionService.locationSessionActive) com.siddesh.smsalerts.service.EmergencyProtectionService.stopService(context)
-=======
-            com.siddesh.smsalerts.service.EmergencyProtectionService.stopService(context)
->>>>>>> origin/main
         }
     }
 
@@ -216,7 +183,6 @@ fun HomeScreen(
     }
 
     val lifecycleOwner = LocalLifecycleOwner.current
-<<<<<<< HEAD
     var requiredFeatureForDialog by remember {
         mutableStateOf<com.siddesh.smsalerts.utils.AppPermissionFeature?>(null)
     }
@@ -234,20 +200,6 @@ fun HomeScreen(
                 homeViewModel.refreshDashboard()
                 if (userPreferences.voiceAlertEnabled && com.siddesh.smsalerts.utils.PermissionManager.hasRecordAudioPermission(context)) voiceDetector.startListening()
             } else if (event == Lifecycle.Event.ON_PAUSE) { voiceDetector.stopListening() }
-=======
-    var showPermissionSetupDialog by remember {
-        mutableStateOf(!PermissionManager.hasAllRequiredPermissions(context))
-    }
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                homeViewModel.refreshDashboard()
-                if (PermissionManager.hasAllRequiredPermissions(context)) {
-                    showPermissionSetupDialog = false
-                }
-            }
->>>>>>> origin/main
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
@@ -261,16 +213,12 @@ fun HomeScreen(
 
     if (showPermissionSetupDialog) {
         EmergencyPermissionDialog(
-<<<<<<< HEAD
             onContinue = { showPermissionSetupDialog = false; onNavigateToCountdown("EMERGENCY", "BUTTON") },
-=======
->>>>>>> origin/main
             onDismiss = {
                 showPermissionSetupDialog = false
             },
             onPermissionsUpdated = {
                 homeViewModel.refreshDashboard()
-<<<<<<< HEAD
             }
         )
     }
@@ -291,16 +239,11 @@ fun HomeScreen(
                     }
                 } else if (f == com.siddesh.smsalerts.utils.AppPermissionFeature.SMS) {
                     onNavigateToCountdown("EMERGENCY", "BUTTON")
-=======
-                if (PermissionManager.hasAllRequiredPermissions(context)) {
-                    showPermissionSetupDialog = false
->>>>>>> origin/main
                 }
             }
         )
     }
 
-<<<<<<< HEAD
     if (showResolveConfirmDialog && activeIncident != null) {
         AlertDialog(
             onDismissRequest = { showResolveConfirmDialog = false },
@@ -340,8 +283,6 @@ fun HomeScreen(
         )
     }
 
-=======
->>>>>>> origin/main
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -361,7 +302,6 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-<<<<<<< HEAD
             if (userPreferences.voiceAlertEnabled && voiceStatus.isNotBlank() && voiceStatus != "Voice off") {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -387,19 +327,13 @@ fun HomeScreen(
                 }
             }
 
-=======
->>>>>>> origin/main
             // Greeting & Safety Status Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-<<<<<<< HEAD
                 Column(modifier = Modifier.weight(1f)) {
-=======
-                Column {
->>>>>>> origin/main
                     Text(
                         text = homeViewModel.getDynamicGreeting(),
                         fontSize = 22.sp,
@@ -407,7 +341,6 @@ fun HomeScreen(
                         color = TextPrimary
                     )
                     Text(
-<<<<<<< HEAD
                         text = when {
                             !serviceReadiness.hasContacts -> "Action required • Configure contacts"
                             !serviceReadiness.hasLocationReady -> "Action required • Enable location"
@@ -415,11 +348,6 @@ fun HomeScreen(
                         },
                         fontSize = 13.sp,
                         color = if (serviceReadiness.isReady && serviceReadiness.hasLocationReady) StatusSuccess else StatusWarning,
-=======
-                        text = if (serviceReadiness.isReady) "System active • Ready for emergency" else "Action required • Configure contacts",
-                        fontSize = 13.sp,
-                        color = if (serviceReadiness.isReady) StatusSuccess else StatusWarning,
->>>>>>> origin/main
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -476,11 +404,7 @@ fun HomeScreen(
                                 color = TextPrimary
                             )
                             Text(
-<<<<<<< HEAD
                                 text = "Without internet, only compatible nearby BLE peers can receive queued alerts.",
-=======
-                                text = "Cellular SMS will transmit even without Internet connectivity.",
->>>>>>> origin/main
                                 fontSize = 11.sp,
                                 color = TextSecondary
                             )
@@ -489,7 +413,6 @@ fun HomeScreen(
                 }
             }
 
-<<<<<<< HEAD
             Spacer(modifier = Modifier.height(14.dp))
 
             // ACTIVE EMERGENCY INCIDENT CARD (Only when an emergency is actually active/dispatching)
@@ -716,16 +639,12 @@ fun HomeScreen(
             }
 
             Spacer(modifier = Modifier.height(14.dp))
-=======
-            Spacer(modifier = Modifier.height(24.dp))
->>>>>>> origin/main
 
             // SECTION 2: MAIN VISIBLE "EMERGENCY ALERT" BUTTON
             SosButton(
                 size = 205.dp,
                 requireHold = requireHold,
                 onSosTriggered = {
-<<<<<<< HEAD
                     val now = System.currentTimeMillis()
                     if (now - lastSosTapTime > 2000L) {
                         lastSosTapTime = now
@@ -738,12 +657,6 @@ fun HomeScreen(
                         } else {
                             onNavigateToCountdown("EMERGENCY", "BUTTON")
                         }
-=======
-                    if (PermissionManager.hasCoreEmergencyPermissions(context)) {
-                        onNavigateToCountdown("EMERGENCY", "BUTTON")
-                    } else {
-                        showPermissionSetupDialog = true
->>>>>>> origin/main
                     }
                 }
             )
@@ -894,7 +807,6 @@ fun HomeScreen(
                 }
             }
 
-<<<<<<< HEAD
             Spacer(modifier = Modifier.height(12.dp))
 
             // SECTION 4B: WALKIE-TALKIE & OFFLINE MESH CARD
@@ -1054,8 +966,6 @@ fun HomeScreen(
                 }
             }
 
-=======
->>>>>>> origin/main
             Spacer(modifier = Modifier.height(16.dp))
 
             // SECTION 5: TRUSTED CONTACTS SUMMARY & LOCATION STATUS
@@ -1162,11 +1072,7 @@ fun HomeScreen(
                 }
             }
 
-<<<<<<< HEAD
             Spacer(modifier = Modifier.height(24.dp))
-=======
-            Spacer(modifier = Modifier.height(88.dp))
->>>>>>> origin/main
         }
     }
 }
