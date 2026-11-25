@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/assets/downloads/(.*)\\.apk",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"SafeAlerts-v1.0.1.apk\"" }
+      ]
+    },
+    {
+      "source": "/assets/video/(.*)\\.mp4",
+      "headers": [
+        { "key": "Content-Type", "value": "video/mp4" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
+  ]
+}
