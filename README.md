@@ -3,7 +3,7 @@
 **Personal Emergency Response, Live GPS Tracking & Offline BLE Mesh for Android**
 
 [![Live Website](https://img.shields.io/badge/Live_Website-safealertss--website.vercel.app-FF2A2A?style=for-the-badge&logo=vercel&logoColor=white)](https://safealertss-website.vercel.app/)
-[![Download APK](https://img.shields.io/badge/Download_APK-v1.0.1_(24.4_MB)-10B981?style=for-the-badge&logo=android&logoColor=white)](https://safealertss-website.vercel.app/assets/downloads/SafeAlerts-v1.0.1.apk)
+[![Download APK](https://img.shields.io/badge/Download_APK-v1.0.1_24.4_MB-10B981?style=for-the-badge&logo=android&logoColor=white)](https://safealertss-website.vercel.app/assets/downloads/SafeAlerts-v1.0.1.apk)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-corsal2006%2FSafeAlertss-181C24?style=for-the-badge&logo=github&logoColor=white)](https://github.com/corsal2006/SafeAlertss)
 
 ---
