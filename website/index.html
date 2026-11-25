@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeAlerts — Personal Emergency Alert, Live GPS &amp; Offline Mesh</title>
+  <meta name="description" content="SafeAlerts is a personal emergency response Android app featuring instant SOS triggers, real-time GPS tracking, Women's Safety Journey, Trusted Circle, and Bluetooth offline SOS mesh." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Scroll Indicator -->
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- Ambient Fluid Mesh Canvas -->
+  <div class="ambient-canvas" aria-hidden="true">
+    <div class="ambient-grid"></div>
+    <div class="orb orb-red"></div>
+    <div class="orb orb-cyan"></div>
+    <div class="orb orb-emerald"></div>
+  </div>
+
+  <!-- Floating Frosted Glass Navbar -->
+  <div class="nav-wrapper">
+    <nav class="navbar" aria-label="Primary Navigation">
+      <a href="#top" class="brand">
+        <svg class="brand-logo" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M60,8 C88.7,8 112,31.3 112,60 C112,88.7 88.7,112 60,112 C31.3,112 8,88.7 8,60 C8,31.3 31.3,8 60,8 Z" stroke="#FF2A55" stroke-width="2.5" stroke-opacity="0.35"/>
+          <path d="M60,14 C76,17.5 88,20 95,25.5 C95,60 80.5,88 60,102 C39.5,88 25,60 25,25.5 C32,20 44,17.5 60,14 Z" fill="#E11D48"/>
+          <path d="M60,14 C76,17.5 88,20 95,25.5 C95,60 80.5,88 60,102 L60,14 Z" fill="#BE123C"/>
+          <path d="M60,17 C73,20 84,22 90,27 C90,58 77,83 60,96 C43,83 30,58 30,27 C36,22 47,20 60,17 Z" stroke="#FFFFFF" stroke-width="1.2" stroke-opacity="0.4"/>
+          <path d="M44,38 C49,33 71,33 76,38" stroke="#38BDF8" stroke-width="2.8" stroke-linecap="round" stroke-opacity="0.9"/>
+          <path d="M50,44 C53,41 67,41 70,44" stroke="#38BDF8" stroke-width="2.8" stroke-linecap="round"/>
+          <circle cx="60" cy="52" r="3" fill="#FFFFFF"/>
+          <path d="M33,72 L44,72 L49,58 L55,86 L62,60 L68,76 L72,72 L87,72" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>SafeAlerts</span>
+        <span class="brand-badge mono">v1.0.1</span>
+      </a>
+
+      <div class="nav-links" id="navLinks">
+        <a href="#why" class="nav-link">Why SafeAlerts</a>
+        <a href="#how-to-use" class="nav-link">How to Use</a>
+        <a href="#gallery" class="nav-link">App Screens</a>
+        <a href="#setup-guide" class="nav-link">Install &amp; Setup</a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="https://github.com/corsal2006/SafeAlertss" target="_blank" rel="noopener" class="icon-btn" aria-label="GitHub Repository" title="Open GitHub Repository">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+        </a>
+        <button class="icon-btn" id="themeToggle" type="button" aria-label="Toggle Light/Dark Theme" title="Switch Dark / Light Theme">
+          <span id="themeIcon">☀️</span>
+        </button>
+        <a href="assets/downloads/SafeAlerts-v1.0.1.apk" download="SafeAlerts-v1.0.1.apk" class="nav-cta apk-download-trigger">
+          <span>Download APK</span>
+        </a>
+        <button class="icon-btn mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Menu">☰</button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ======================================================================
+       HERO SECTION + AUTOPLAY VIRTUAL PHONE VIDEO DEMO
+       ====================================================================== -->
+  <section class="hero" id="top">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-copy reveal">
+          <span class="eyebrow"><span class="pulse-dot"></span> Personal Emergency System · Android 7.0+</span>
+          <h1>Every second matters. <span class="text-gradient">Stay protected,</span> online or offline.</h1>
+          <p class="lead">
+            SafeAlerts unifies one-tap emergency SOS alerts, automatic cellular SMS with Google Maps fixes,
+            Women's Safety Journey tracking, Trusted Circle mutual sharing, and Bluetooth offline SOS beacons in a single resilient Android app.
+          </p>
+
+          <div class="btn-group">
+            <a href="assets/downloads/SafeAlerts-v1.0.1.apk" download="SafeAlerts-v1.0.1.apk" class="btn btn-primary apk-download-trigger">
+              <span>⬇ Download SafeAlerts APK</span>
+              <span class="mono" style="font-size:0.78rem;opacity:0.9;">24.4 MB</span>
+            </a>
+            <a href="https://github.com/corsal2006/SafeAlertss" target="_blank" rel="noopener" class="btn btn-glass">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span>GitHub Repo</span>
+            </a>
+            <a href="https://github.com/corsal2006/SafeAlertss/releases" target="_blank" rel="noopener" class="btn btn-glass">
+              <span>Releases</span>
+            </a>
+            <a href="#setup-guide" class="btn btn-glass">
+              <span>Setup Guide ↓</span>
+            </a>
+          </div>
+
+          <div class="apk-meta-bar">
+            <span class="apk-meta-item">✅ Version 1.0.1 (<code>com.siddesh.smsalerts</code>)</span>
+            <span class="apk-meta-item">📱 Android 7.0 – 15 (API 24–34)</span>
+            <span class="apk-meta-item">🛰️ GPS + SMS + BLE Mesh</span>
+          </div>
+
+          <div class="hero-stats">
+            <div class="glass-card stat-pill">
+              <span class="stat-value" style="color:var(--emergency-red-light);">3s</span>
+              <span class="stat-label">SOS countdown guard</span>
+            </div>
+            <div class="glass-card stat-pill">
+              <span class="stat-value" style="color:var(--mesh-cyan);">15s</span>
+              <span class="stat-label">Live GPS sync cadence</span>
+            </div>
+            <div class="glass-card stat-pill">
+              <span class="stat-value" style="color:var(--status-success);">BLE Mesh</span>
+              <span class="stat-label">Works without internet</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clean Virtual Smartphone Frame Autoplaying User's Video -->
+        <div class="phone-stage reveal">
+          <div class="phone-aura"></div>
+
+          <div class="phone-chassis interactive-tilt">
+            <div class="phone-screen">
+              <div class="phone-notch"></div>
+              <video id="demoVideo" src="assets/video/safealerts-demo.mp4" autoplay loop playsinline controls preload="auto" poster="assets/app/app_05.jpg">
+                Your browser does not support embedded MP4 playback.
+              </video>
+            </div>
+          </div>
+
+          <div class="video-controls-bar">
+            <span>📱 Live App Walkthrough</span>
+            <button class="video-pill-btn" id="videoPlayToggle" type="button">Pause</button>
+            <button class="video-pill-btn" id="videoMuteToggle" type="button">🔊 Volume 100%</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       WHY SAFEALERTS SHOULD BE USED + CORE FEATURES
+       ====================================================================== -->
+  <section id="why">
+    <div class="container">
+      <div class="section-header centered reveal">
+        <span class="eyebrow">Why SafeAlerts</span>
+        <h2>Built for real emergencies, not fair-weather demos.</h2>
+        <p class="lead">
+          When panic hits, cellular data drops, or you cannot unlock your phone fast enough, conventional messaging apps fail.
+          SafeAlerts combines redundant hardware triggers and honest telemetry so help reaches the people who care.
+        </p>
+      </div>
+
+      <div class="bento-grid">
+        <article class="glass-card bento-card span-6 reveal">
+          <div>
+            <div class="icon-tile red">🚨</div>
+            <h3 style="margin-top:16px;">Multi-Channel Instant SOS &amp; Real SMS</h3>
+            <p style="margin-top:8px;">
+              Trigger an alert via the 1-tap/2-second hold SOS button, 3x physical shake in the background, or Voice <code>"HELP ME"</code> recognition.
+              SafeAlerts attaches your exact GPS coordinates, creates a Google Maps link, and dispatches native cellular SMS alongside Firebase Cloud audit sync.
+            </p>
+          </div>
+          <div class="feature-tag-row">
+            <span class="mini-tag">SmsManager Cellular Dispatch</span>
+            <span class="mini-tag">3s Countdown Guard</span>
+            <span class="mini-tag">Medical / Accident / Fire / Security</span>
+          </div>
+        </article>
+
+        <article class="glass-card bento-card span-6 reveal">
+          <div>
+            <div class="icon-tile cyan">🧭</div>
+            <h3 style="margin-top:16px;">Women's Safety Journey &amp; Check-In Timers</h3>
+            <p style="margin-top:8px;">
+              Search real destinations with Google Places Autocomplete, visualize the route &amp; ETA on Google Maps, and activate an arrival timer with configurable grace periods.
+              If you don't confirm arrival in time, SafeAlerts escalates automatically with your live coordinates and destination details.
+            </p>
+          </div>
+          <div class="feature-tag-row">
+            <span class="mini-tag">Google Places Search</span>
+            <span class="mini-tag">OSRM Route &amp; ETA</span>
+            <span class="mini-tag">1091 Helpline Quick Dial</span>
+          </div>
+        </article>
+
+        <article class="glass-card bento-card span-4 reveal">
+          <div>
+            <div class="icon-tile emerald">📡</div>
+            <h3 style="margin-top:16px;">Zero-Internet BLE Mesh</h3>
+            <p style="margin-top:8px;">
+              No Wi-Fi or cell tower? Broadcast signed SOS packets and encrypted text chat directly to nearby paired SafeAlerts phones over Bluetooth Low Energy.
+            </p>
+          </div>
+          <div class="feature-tag-row">
+            <span class="mini-tag">Offline SOS Beacon</span>
+            <span class="mini-tag">BLE Encrypted Chat</span>
+          </div>
+        </article>
+
+        <article class="glass-card bento-card span-4 reveal">
+          <div>
+            <div class="icon-tile cyan">👥</div>
+            <h3 style="margin-top:16px;">Consent-Based Trusted Circle</h3>
+            <p style="margin-top:8px;">
+              Link family and close friends via single-use invitation codes. View live member pins on Google Maps with automatic 1-hour expiry and stale-fix warnings.
+            </p>
+          </div>
+          <div class="feature-tag-row">
+            <span class="mini-tag">Mutual Invite Codes</span>
+            <span class="mini-tag">Firestore Realtime</span>
+          </div>
+        </article>
+
+        <article class="glass-card bento-card span-4 reveal">
+          <div>
+            <div class="icon-tile amber">🔍</div>
+            <h3 style="margin-top:16px;">Honest Telemetry &amp; Audit History</h3>
+            <p style="margin-top:8px;">
+              Never fakes a delivery receipt. Inspect exact SMS, Cloud, GPS accuracy (±m), and permission readiness for every single incident in Alert History.
+            </p>
+          </div>
+          <div class="feature-tag-row">
+            <span class="mini-tag">Dark &amp; Light Modes</span>
+            <span class="mini-tag">Reboot Recovery</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       HOW TO USE SAFEALERTS — AUTO-SLIDING 3S LOOP IN VIRTUAL PHONE
+       ====================================================================== -->
+  <section id="how-to-use">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="eyebrow">How to Use the App</span>
+        <h2>Walk through every critical flow inside a virtual device.</h2>
+        <p class="lead">
+          Auto-advances every 3 seconds in a continuous loop, or click any step to inspect immediately.
+        </p>
+      </div>
+
+      <div class="walkthrough-grid">
+        <div class="step-list reveal">
+          <button class="step-item usage-step active" type="button">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <div class="step-title">Sign In &amp; Sync Your Safety Profile</div>
+              <div class="step-desc">Log in using Email/Password, one-tap Google Sign-In, or Passwordless Email Link to sync contacts and incident history.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item usage-step" type="button">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <div class="step-title">Configure Trusted Emergency Contacts</div>
+              <div class="step-desc">Import from phone contacts or add numbers manually, assign relationships, and toggle who receives automatic SMS alerts.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item usage-step" type="button">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <div class="step-title">Trigger SOS or Quick Action Categories</div>
+              <div class="step-desc">Use the main Emergency Alert button or select Medical, Accident, Fire, Security, Check-In, or Location from Quick Actions.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item usage-step" type="button">
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <div class="step-title">3-Second Accidental-Trigger Guard</div>
+              <div class="step-desc">Review telemetry preview during the 3-second countdown—confirm immediately for instant dispatch or cancel safely.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item usage-step" type="button">
+            <span class="step-num">5</span>
+            <div class="step-body">
+              <div class="step-title">Live Incident Tracking &amp; Google Maps Pin</div>
+              <div class="step-desc">Monitor exact GPS precision (±22m), cloud sync status, live map pin, and resolve with "I'M SAFE" once out of danger.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item usage-step" type="button">
+            <span class="step-num">6</span>
+            <div class="step-body">
+              <div class="step-title">Real Cellular SMS &amp; System Notifications</div>
+              <div class="step-desc">Contacts immediately receive your custom message and Google Maps link, while persistent alerts monitor active journeys.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item usage-step" type="button">
+            <span class="step-num">7</span>
+            <div class="step-body">
+              <div class="step-title">Start a Women's Safety Journey</div>
+              <div class="step-desc">Search any destination via Google Places, preview route &amp; ETA on the map, and set an automatic escalation deadline.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item usage-step" type="button">
+            <span class="step-num">8</span>
+            <div class="step-body">
+              <div class="step-title">Broadcast Over Offline Bluetooth Mesh</div>
+              <div class="step-desc">Inside Nearby Offline, broadcast prioritized BLE SOS packets and encrypted mesh chats without cellular service or internet.</div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+        </div>
+
+        <div class="phone-stage reveal">
+          <div class="phone-aura"></div>
+          <div class="phone-chassis interactive-tilt">
+            <div class="phone-screen slide-viewport" id="usageViewport">
+              <div class="phone-notch"></div>
+              <img id="usagePhoneImg" class="slide-img active" src="assets/app/app_01.jpg" alt="SafeAlerts App Virtual Screen Preview" />
+              <img id="usagePhoneImgNext" class="slide-img next" src="assets/app/app_02.jpg" alt="" aria-hidden="true" />
+            </div>
+          </div>
+          <p class="phone-caption" id="usagePhoneCaption">
+            Step 1: Sign in securely with Email/Password, Google Sign-In, or Passwordless Email Link.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       COMPLETE VIRTUAL MOBILE SCREENSHOT GALLERY (ALL 14 APP SCREENS)
+       ====================================================================== -->
+  <section id="gallery">
+    <div class="container">
+      <div class="section-header centered reveal" style="margin-bottom:26px;">
+        <span class="eyebrow cyan">Virtual Mobile Showcase</span>
+        <h2>All 14 real screens in mobile view.</h2>
+        <p class="lead">
+          Filter by feature category or tap any phone preview to inspect the full-resolution UI.
+        </p>
+      </div>
+
+      <div class="filter-bar-wrap reveal">
+        <div class="filter-pills" role="tablist" aria-label="Filter app screens">
+          <button class="filter-pill active" type="button" data-filter="all">All Screens <span class="pill-count">14</span></button>
+          <button class="filter-pill" type="button" data-filter="sos">SOS &amp; Alerts</button>
+          <button class="filter-pill" type="button" data-filter="safety">Safety &amp; Maps</button>
+          <button class="filter-pill" type="button" data-filter="circle">Offline &amp; Circle</button>
+          <button class="filter-pill" type="button" data-filter="account">Account &amp; Settings</button>
+        </div>
+      </div>
+
+      <div class="gallery-grid">
+        <div class="glass-card gallery-card reveal" data-category="account" data-title="Login &amp; Authentication" data-desc="Firebase Authentication supporting Email/Password, one-tap Google Sign-In, Passwordless Email Link, and quick account creation.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_01.jpg" alt="Login screen" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Login &amp; Auth</h4><p>Google &amp; Email Sign-In</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="sos" data-title="Home SOS Dashboard" data-desc="Central command dashboard with Quick Tap or 2s Hold emergency SOS button, system active indicator, and 8 one-tap Quick Actions.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_05.jpg" alt="Home dashboard" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Home Dashboard</h4><p>Instant SOS &amp; Quick Actions</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="sos" data-title="3-Second SOS Countdown" data-desc="Animated radial countdown guard with Alert Telemetry Preview, instant Confirm &amp; Dispatch Now, or Cancel Emergency button.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_07.jpg" alt="SOS countdown screen" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>SOS Countdown</h4><p>3s Safety Guard &amp; Telemetry</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="sos" data-title="Active Emergency Incident" data-desc="Live incident control panel showing GPS fix accuracy (±22m), Google Maps pin, Retry Location, and 'I'M SAFE — RESOLVE INCIDENT'.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_08.jpg" alt="Emergency incident screen" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Active Incident</h4><p>Live Google Maps Pin &amp; Resolve</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="sos" data-title="Real SMS &amp; Overdue Notifications" data-desc="Genuine SMS alerts delivered to contacts with emergency text and overdue Women's Safety destination notifications.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_12.jpg" alt="SMS notification shade" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>SMS Alert Delivery</h4><p>Real Cellular Notifications</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="account" data-title="Trusted Emergency Contacts" data-desc="Manage SMS emergency recipients with quick enable/disable switches, relationship tags, direct Call, Edit, and Delete controls.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_02.jpg" alt="Trusted contacts" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Trusted Contacts</h4><p>SMS Recipient Controls</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="safety" data-title="Women's Safety Journey" data-desc="Google Places Autocomplete destination search, quick chips (Home, Office, Metro, Hostel), live Google Map, and ETA escalation timer.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_11.jpg" alt="Women's safety screen" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Women's Safety</h4><p>Places Search &amp; Live Map</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="safety" data-title="Safety Check-In Timer" data-desc="Select grace periods (Immediate to 5 mins) and check-in durations (15m, 30m, 1h, 2h, Custom) with authoritative emergency escalation.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_10.jpg" alt="Safety check-in timer" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Safety Check-In</h4><p>Timed Arrival &amp; Grace Period</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="circle" data-title="Trusted Circle &amp; Circle Map" data-desc="Mutual location sharing on Google Maps with single-use invite codes, 1-hour expiry, and fresh GPS accuracy badges.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_13.jpg" alt="Trusted circle map" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Trusted Circle</h4><p>Mutual Live Map Sharing</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="circle" data-title="Nearby Offline BLE Mesh" data-desc="Broadcast signed Offline Emergency SOS packets and encrypted offline text chat over Bluetooth Low Energy without internet or cellular service.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_14.jpg" alt="Nearby offline Bluetooth mesh" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Offline BLE Mesh</h4><p>Beacon &amp; Encrypted Chat</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="sos" data-title="Alert History &amp; Audit Trail" data-desc="Chronological record of all triggered SOS alerts with RESOLVED / ACTIVE status badges, trigger source, timestamp, and GPS status.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_03.jpg" alt="Alert history" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Alert History</h4><p>Complete Incident Audit</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="account" data-title="Background Protection &amp; Triggers" data-desc="Enable foreground shake detection in the background, customize emergency message text, configure voice triggers, and view regional helplines.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_04.jpg" alt="Settings dark mode" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Settings &amp; Triggers</h4><p>Background Shake &amp; Voice</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="account" data-title="Light Mode &amp; Permissions Telemetry" data-desc="Seamless Light/Dark/System theme switching, 3s/5s/10s SOS trigger window, haptic feedback, and live System Permissions Telemetry.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_09.jpg" alt="Settings light mode" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>Light Theme &amp; Telemetry</h4><p>Live Permission Diagnostics</p></div>
+        </div>
+
+        <div class="glass-card gallery-card reveal" data-category="account" data-title="User Profile &amp; Safety Stats" data-desc="Google-linked user profile displaying trusted contacts count, logged alerts counter, contact details, and age calculation.">
+          <div class="mini-phone"><div class="mini-phone-screen"><img src="assets/app/app_06.jpg" alt="User profile" loading="lazy" /></div></div>
+          <div class="gallery-meta"><h4>User Profile</h4><p>Account &amp; Safety Metrics</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       ANDROID INSTALLATION & RESTRICTED PERMISSIONS SETUP GUIDE (AUTO-SLIDE 3S)
+       ====================================================================== -->
+  <section id="setup-guide">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="eyebrow cyan">Android Installation &amp; Setup Guide</span>
+        <h2>How to install &amp; grant all permissions on your Android phone.</h2>
+        <p class="lead">
+          Auto-advances every 3 seconds through all 5 setup steps in a loop, or tap any step to inspect manually.
+        </p>
+      </div>
+
+      <div class="walkthrough-grid reversed">
+        <div class="step-list reveal">
+          <button class="step-item setup-step active" type="button">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <div class="step-title">Download the APK from GitHub Releases (or Direct Link)</div>
+              <div class="step-desc">
+                Open <strong>corsal2006 / SafeAlertss</strong> on GitHub, tap <strong>Releases → Safe Alerts Latest</strong>, and download the <code>.apk</code> file—or tap <strong>Download APK</strong> right on this page.
+              </div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item setup-step" type="button">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <div class="step-title">Open Google Play Store → Play Protect Settings</div>
+              <div class="step-desc">
+                Open the <strong>Google Play Store</strong>, tap your top-right Profile icon → <strong>Play Protect</strong>, and tap the <strong>Settings gear (⚙)</strong> in the upper-right corner.
+              </div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item setup-step" type="button">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <div class="step-title">Turn Off Play Protect &amp; Install the APK</div>
+              <div class="step-desc">
+                Temporarily toggle off <strong>Scan apps with Play Protect</strong> and <strong>Improve harmful app detection</strong>, then open your downloaded SafeAlerts <code>.apk</code> and tap <strong>Install</strong>.
+              </div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item setup-step" type="button">
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <div class="step-title">Login &amp; Allow All Permissions (or Allow Restricted Settings)</div>
+              <div class="step-desc">
+                Open SafeAlerts, sign in with your account, and accept every permission prompt—or manually open <strong>Android Settings → Apps → SafeAlerts → Permissions</strong>.
+              </div>
+              <div class="callout-alert">
+                <strong>⚠ Android 13 / 14 / 15 Note:</strong> If any permission switch (like SMS or Background Access) is disabled/greyed out, go back to <strong>App Info</strong>, tap the <strong>⋮ three-dot menu in the top-right corner</strong>, and tap <strong>Allow restricted settings</strong> (or <strong>Allow restricted permissions</strong>).
+              </div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+
+          <button class="step-item setup-step" type="button">
+            <span class="step-num">5</span>
+            <div class="step-body">
+              <div class="step-title">Verify All 6 Core Permissions Are Allowed</div>
+              <div class="step-desc">
+                Confirm <strong>Contacts, Location, Microphone, Nearby devices, Notifications, and SMS</strong> all appear under <strong>Allowed</strong> with <em>"No permissions denied"</em>.
+              </div>
+              <div class="step-progress-track"><div class="step-progress-fill"></div></div>
+            </div>
+          </button>
+        </div>
+
+        <div class="phone-stage reveal">
+          <div class="phone-aura" style="background:radial-gradient(circle, rgba(56,189,248,0.3) 0%, rgba(255,42,42,0.16) 55%, transparent 75%);"></div>
+          <div class="phone-chassis interactive-tilt">
+            <div class="phone-screen slide-viewport" id="setupViewport">
+              <div class="phone-notch"></div>
+              <img id="setupPhoneImg" class="slide-img active" src="assets/setup/setup_02.jpg" alt="SafeAlerts Android Setup Step Preview" />
+              <img id="setupPhoneImgNext" class="slide-img next" src="assets/setup/setup_03.jpg" alt="" aria-hidden="true" />
+            </div>
+          </div>
+          <p class="phone-caption" id="setupPhoneCaption">
+            Step 1: Open corsal2006/SafeAlertss on GitHub (or use the Download APK button above) and download the latest APK.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       FINAL DOWNLOAD CTA BANNER
+       ====================================================================== -->
+  <section id="download">
+    <div class="container">
+      <div class="glass-card download-banner reveal">
+        <div>
+          <span class="eyebrow emerald">Ready to Install</span>
+          <h2>Get SafeAlerts v1.0.1 for Android</h2>
+          <p class="lead" style="margin-bottom:24px;">
+            Install directly on Android 7.0+ (API 24–34). Built with Jetpack Compose, Material 3, Firebase Auth &amp; Firestore, Google Maps, and Bluetooth Low Energy Mesh.
+          </p>
+          <div class="btn-group">
+            <a href="assets/downloads/SafeAlerts-v1.0.1.apk" download="SafeAlerts-v1.0.1.apk" class="btn btn-primary apk-download-trigger">
+              <span>⬇ Download SafeAlerts-v1.0.1.apk</span>
+            </a>
+            <a href="https://github.com/corsal2006/SafeAlertss" target="_blank" rel="noopener" class="btn btn-glass">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span>GitHub Repository</span>
+            </a>
+          </div>
+        </div>
+
+        <ul class="checklist">
+          <li><span class="check-icon">✓</span><span>Instant SOS Hold/Tap + Shake &amp; Voice triggers</span></li>
+          <li><span class="check-icon">✓</span><span>Real Cellular SMS + Google Maps Pin Delivery</span></li>
+          <li><span class="check-icon">✓</span><span>Women's Safety Journey with Google Places Search</span></li>
+          <li><span class="check-icon">✓</span><span>Offline Bluetooth Low Energy SOS Beacon &amp; Chat</span></li>
+          <li><span class="check-icon">✓</span><span>Includes full Setup Guide for Restricted Permissions</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       FOOTER
+       ====================================================================== -->
+  <footer>
+    <div class="container footer-inner">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <strong style="color:var(--text-primary);">SafeAlerts</strong>
+        <span>· Personal Emergency Alert System (<code>com.siddesh.smsalerts</code>)</span>
+      </div>
+      <div>
+        <span>SafeAlerts complements—and does not replace—official local emergency services (112 / 1091 / 911).</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Lightbox Modal for Full Mobile View Inspection -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle">
+    <div class="lightbox-content">
+      <button class="icon-btn lightbox-close" id="lightboxClose" type="button" aria-label="Close Preview">✕</button>
+      <div class="phone-chassis lightbox-phone">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <img id="lightboxImg" src="assets/app/app_05.jpg" alt="Expanded phone screenshot" />
+        </div>
+      </div>
+      <div>
+        <span class="eyebrow" id="lightboxBadge">1 / 14</span>
+        <h2 id="lightboxTitle" style="font-size:1.75rem;">Screen Title</h2>
+        <p id="lightboxDesc" class="lead" style="font-size:1rem;margin-bottom:24px;">Screen description</p>
+        <div class="btn-group">
+          <button class="btn btn-glass" id="lightboxPrev" type="button">← Previous</button>
+          <button class="btn btn-glass" id="lightboxNext" type="button">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Download Feedback Toast -->
+  <div class="toast" id="downloadToast">
+    ✅ Downloading SafeAlerts-v1.0.1.apk — Follow the 5-step Setup Guide below to enable all permissions!
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
